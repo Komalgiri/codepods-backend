@@ -1,0 +1,46 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  pods      PodMember[]
+}
+
+model Pod {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime     @default(now())
+  members     PodMember[]
+  plans       ProjectPlan[]
+}
+
+model PodMember {
+  id        String   @id @default(cuid())
+  userId    String
+  podId     String
+  role      String?
+  joinedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  pod  Pod  @relation(fields: [podId], references: [id])
+}
+
+model ProjectPlan {
+  id        String   @id @default(cuid())
+  podId     String
+  roadmap   Json
+  createdAt DateTime @default(now())
+
+  pod Pod @relation(fields: [podId], references: [id])
+}
