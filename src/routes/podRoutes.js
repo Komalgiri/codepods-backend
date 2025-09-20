@@ -1,10 +1,8 @@
 import express from "express";
+import { createPod } from "../controllers/podController.js";
 
 const router = express.Router();
 
-// Example route
-router.get("/", (req, res) => {
-  res.json({ message: "Pods API working 🚀" });
-});
+router.post("/", createPod);
 
 export default router;

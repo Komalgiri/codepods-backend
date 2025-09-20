@@ -1,46 +1,64 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Supabase connection string
 }
 
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  name      String?
+  password  String
+  name      String
+  pods      PodMember[]  // relation to Pod via join table
+  tasks     Task[]       // tasks assigned to user
+  rewards   Reward[]     // rewards earned
   createdAt DateTime @default(now())
-  pods      PodMember[]
 }
 
 model Pod {
-  id          String       @id @default(cuid())
-  name        String
+  id        String      @id @default(cuid())
+  name      String
   description String?
-  createdBy   String
-  createdAt   DateTime     @default(now())
-  members     PodMember[]
-  plans       ProjectPlan[]
+  members   PodMember[] // relation to User via join table
+  tasks     Task[]      // tasks inside pod
+  createdAt DateTime @default(now())
 }
 
 model PodMember {
-  id        String   @id @default(cuid())
-  userId    String
-  podId     String
-  role      String?
-  joinedAt  DateTime @default(now())
+  id      String @id @default(cuid())
+  userId  String
+  podId   String
+  role    String   // e.g. "admin", "member"
 
   user User @relation(fields: [userId], references: [id])
   pod  Pod  @relation(fields: [podId], references: [id])
+
+  @@unique([userId, podId]) // prevent duplicate membership
 }
 
-model ProjectPlan {
+model Task {
   id        String   @id @default(cuid())
+  title     String
+  status    String   @default("pending") // pending, in-progress, done
   podId     String
-  roadmap   Json
-  createdAt DateTime @default(now())
+  assignedTo String?
 
-  pod Pod @relation(fields: [podId], references: [id])
+  pod   Pod   @relation(fields: [podId], references: [id])
+  user  User? @relation(fields: [assignedTo], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model Reward {
+  id        String   @id @default(cuid())
+  points    Int      @default(0)
+  reason    String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
