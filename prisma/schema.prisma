@@ -1,4 +1,5 @@
 // prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,31 +9,46 @@ datasource db {
   url      = env("DATABASE_URL") // Supabase connection string
 }
 
+//////////////////////////
+// User & Auth
+//////////////////////////
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  pods      PodMember[]  // relation to Pod via join table
-  tasks     Task[]       // tasks assigned to user
-  rewards   Reward[]     // rewards earned
-  createdAt DateTime @default(now())
+  id           String       @id @default(cuid())
+  email        String       @unique
+  password     String
+  name         String
+  pods         PodMember[]  // relation to Pod via join table
+  tasks        Task[]       // tasks assigned to user
+  rewards      Reward[]     // rewards earned
+  activities   Activity[]   // GitHub / platform activity
+  skills       Skill[]      @relation("UserSkills")
+  createdAt    DateTime     @default(now())
+
+  // 🔹 GitHub OAuth fields
+  githubId     String?      @unique
+  githubToken  String?      // encrypted access token
 }
 
+//////////////////////////
+// Pods & Collaboration
+//////////////////////////
 model Pod {
-  id        String      @id @default(cuid())
-  name      String
+  id          String       @id @default(cuid())
+  name        String
   description String?
-  members   PodMember[] // relation to User via join table
-  tasks     Task[]      // tasks inside pod
-  createdAt DateTime @default(now())
+  repoOwner   String?      // GitHub org or username
+  repoName    String?      // GitHub repo name
+  members     PodMember[]  // relation to User via join table
+  tasks       Task[]       // tasks inside pod
+  activities  Activity[]
+  createdAt   DateTime     @default(now())
 }
 
 model PodMember {
-  id      String @id @default(cuid())
-  userId  String
-  podId   String
-  role    String   // e.g. "admin", "member"
+  id       String @id @default(cuid())
+  userId   String
+  podId    String
+  role     String   // "admin" / "member" / "maintainer"
 
   user User @relation(fields: [userId], references: [id])
   pod  Pod  @relation(fields: [podId], references: [id])
@@ -40,6 +56,9 @@ model PodMember {
   @@unique([userId, podId]) // prevent duplicate membership
 }
 
+//////////////////////////
+// Tasks
+//////////////////////////
 model Task {
   id        String   @id @default(cuid())
   title     String
@@ -49,16 +68,52 @@ model Task {
 
   pod   Pod   @relation(fields: [podId], references: [id])
   user  User? @relation(fields: [assignedTo], references: [id])
-  
+
+  createdAt DateTime @default(now())
+  dueAt     DateTime?
+}
+
+//////////////////////////
+// Activity & Rewards
+//////////////////////////
+model Activity {
+  id        String   @id @default(cuid())
+  type      String   // "commit", "pr_opened", "repo_created", etc.
+  meta      Json?    // raw payload or parsed details
+  value     Int      @default(0)  // points for this activity
+  userId    String
+  podId     String?
+
+  user      User     @relation(fields: [userId], references: [id])
+  pod       Pod?     @relation(fields: [podId], references: [id])
   createdAt DateTime @default(now())
 }
 
 model Reward {
   id        String   @id @default(cuid())
   points    Int      @default(0)
+  badges    String[] // list of badge slugs
   reason    String?
   userId    String
 
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Badge {
+  id          String @id @default(cuid())
+  slug        String @unique
+  title       String
+  description String
+  icon        String? // URL or asset name
+  points      Int
+}
+
+//////////////////////////
+// Skills (optional for Skill Exchange)
+//////////////////////////
+model Skill {
+  id    String @id @default(cuid())
+  name  String @unique
+  users User[] @relation("UserSkills")
 }
