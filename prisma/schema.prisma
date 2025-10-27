@@ -14,19 +14,20 @@ datasource db {
 //////////////////////////
 model User {
   id           String       @id @default(cuid())
-  email        String       @unique
-  password     String
-  name         String
-  pods         PodMember[]  // relation to Pod via join table
-  tasks        Task[]       // tasks assigned to user
-  rewards      Reward[]     // rewards earned
-  activities   Activity[]   // GitHub / platform activity
+  email        String?      @unique        // optional for GitHub users
+  password     String?                      // optional for GitHub users
+  name         String?
+  role         String       @default("user")
+  pods         PodMember[]
+  tasks        Task[]
+  rewards      Reward[]
+  activities   Activity[]
   skills       Skill[]      @relation("UserSkills")
   createdAt    DateTime     @default(now())
 
-  // 🔹 GitHub OAuth fields
+  // GitHub OAuth fields
   githubId     String?      @unique
-  githubToken  String?      // encrypted access token
+  githubToken  String?      // we'll encrypt this
 }
 
 //////////////////////////
