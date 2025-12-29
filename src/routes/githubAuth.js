@@ -39,7 +39,7 @@ router.get("/callback", async (req, res) => {
 
     const { id, login, avatar_url } = userResponse.data;
 
-    // Find or create user
+    // Find or create user, update token if exists
     let user = await prisma.user.findUnique({ where: { githubId: String(id) } });
     if (!user) {
       user = await prisma.user.create({
@@ -48,6 +48,12 @@ router.get("/callback", async (req, res) => {
           name: login,
           githubToken: accessToken, // plain for now
         },
+      });
+    } else {
+      // Update token if user already exists
+      user = await prisma.user.update({
+        where: { githubId: String(id) },
+        data: { githubToken: accessToken },
       });
     }
 
