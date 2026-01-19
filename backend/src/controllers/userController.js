@@ -31,6 +31,7 @@ export const signup = async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        githubId: user.githubId,
       },
     });
   } catch (error) {
@@ -62,6 +63,7 @@ export const login = async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        githubId: user.githubId,
       },
     });
   } catch (error) {
