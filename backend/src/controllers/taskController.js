@@ -77,7 +77,7 @@ export const createTask = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Task created successfully ✅",
+      message: "Task created successfully 🚀.",
       task,
     });
   } catch (error) {
@@ -152,7 +152,7 @@ export const updateTaskStatus = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "Task status updated successfully ✅",
+      message: "Task status updated successfully 🚀.",
       task: updatedTask,
     });
   } catch (error) {
@@ -161,3 +161,50 @@ export const updateTaskStatus = async (req, res) => {
   }
 };
 
+// GET /pods/:id/tasks - Get all tasks for a pod
+export const getTasksByPod = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id; // From authMiddleware
+
+    // Check if user is a member of the pod
+    const membership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        error: "You are not a member of this pod",
+      });
+    }
+
+    // Fetch tasks
+    const tasks = await prisma.task.findMany({
+      where: { podId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.status(200).json({
+      tasks,
+    });
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

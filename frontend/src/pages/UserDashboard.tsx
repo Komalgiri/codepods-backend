@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
+import { podService } from '../services/podService';
 
 interface User {
     id: string;
@@ -42,10 +43,7 @@ const UserDashboard = () => {
         { id: '3', type: 'review', description: 'Reviewed PR #40: Database schema', date: '1 day ago' },
     ]);
 
-    const [pods] = useState<Pod[]>([
-        { id: '1', name: 'Backend Service', role: 'Maintainer' },
-        { id: '2', name: 'Frontend App', role: 'Contributor' },
-    ]);
+    const [pods, setPods] = useState<Pod[]>([]);
 
     const [tasks] = useState<Task[]>([
         { id: '1', title: 'Implement Auth Flow', status: 'in-progress', dueDate: 'Today' },
@@ -65,17 +63,20 @@ const UserDashboard = () => {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
 
-        // Fetch rewards
-        const fetchRewards = async () => {
+        const fetchDashboardData = async () => {
             try {
-                const data = await userService.getRewards(parsedUser.id);
-                setRewards(data);
+                const [rewardsData, podsData] = await Promise.all([
+                    userService.getRewards(parsedUser.id),
+                    podService.getUserPods()
+                ]);
+                setRewards(rewardsData);
+                setPods(podsData.pods);
             } catch (error) {
-                console.error('Failed to fetch rewards', error);
+                console.error('Failed to fetch dashboard data', error);
             }
         };
 
-        fetchRewards();
+        fetchDashboardData();
     }, [navigate]);
 
     const handleLogout = () => {
@@ -226,10 +227,14 @@ const UserDashboard = () => {
                             </div>
                             <div className="space-y-4">
                                 {pods.map((pod) => (
-                                    <div key={pod.id} className="group p-4 rounded-xl border border-background-border/50 bg-background/30 hover:bg-background/80 transition-all cursor-pointer">
+                                    <div
+                                        key={pod.id}
+                                        onClick={() => navigate(`/pod/${pod.id}`)}
+                                        className="group p-4 rounded-xl border border-background-border/50 bg-background/30 hover:bg-background/80 transition-all cursor-pointer"
+                                    >
                                         <div className="flex items-center justify-between mb-2">
                                             <h3 className="font-bold text-text-primary group-hover:text-primary transition-colors">{pod.name}</h3>
-                                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{pod.role}</span>
+                                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium capitalize">{pod.role}</span>
                                         </div>
                                         <div className="flex items-center -space-x-2">
                                             <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-background-surface"></div>

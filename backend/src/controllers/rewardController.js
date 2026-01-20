@@ -66,7 +66,7 @@ export const createReward = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Reward created successfully ✅",
+      message: "Reward created successfully 🚀.",
       reward,
     });
   } catch (error) {
@@ -123,3 +123,117 @@ export const getUserRewards = async (req, res) => {
   }
 };
 
+// GET /pods/:id/leaderboard - Get leaderboard for a pod
+export const getPodLeaderboard = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id; // From authMiddleware
+
+    // Check if user is a member of the pod
+    const membership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        error: "You are not a member of this pod",
+      });
+    }
+
+    // Get all members of the pod
+    const members = await prisma.podMember.findMany({
+      where: { podId },
+      include: {
+        user: {
+          include: {
+            rewards: true, // Include rewards to calculate total points
+          },
+        },
+      },
+    });
+
+    // Calculate total points for each member and sort
+    const leaderboard = members
+      .map((member) => {
+        const totalPoints = member.user.rewards.reduce((sum, reward) => sum + reward.points, 0);
+        return {
+          id: member.user.id,
+          name: member.user.name,
+          email: member.user.email,
+          role: member.role,
+          totalPoints,
+          // Add default badges or fetch from a 'UserBadges' relation if it existed
+          badges: [],
+          level: Math.floor(totalPoints / 1000) + 1, // Simple level calculation
+        };
+      })
+      .sort((a, b) => b.totalPoints - a.totalPoints);
+
+    return res.status(200).json({
+      leaderboard,
+    });
+  } catch (error) {
+    console.error("Error fetching leaderboard:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /pods/:id/achievements - Get recent achievements for a pod
+export const getPodAchievements = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id;
+
+    // Check membership
+    const membership = await prisma.podMember.findUnique({
+      where: { userId_podId: { userId, podId } },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "You are not a member of this pod" });
+    }
+
+    // Get members of the pod
+    const members = await prisma.podMember.findMany({
+      where: { podId },
+      select: { userId: true }
+    });
+
+    const userIds = members.map(m => m.userId);
+
+    // Fetch recent rewards for these users
+    const achievements = await prisma.reward.findMany({
+      where: {
+        userId: { in: userIds },
+        badges: { path: [], not: [] } // Has at least one badge
+      },
+      include: {
+        user: {
+          select: { id: true, name: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+
+    return res.status(200).json({
+      achievements: achievements.map(a => ({
+        id: a.id,
+        user: a.user.name,
+        badge: a.badges[0], // Show the first badge for now
+        points: a.points,
+        reason: a.reason,
+        time: a.createdAt
+      }))
+    });
+
+  } catch (error) {
+    console.error("Error fetching achievements:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

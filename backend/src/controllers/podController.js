@@ -1,11 +1,49 @@
 import prisma from "../utils/prismaClient.js";
 
+// GET /pods - Fetch all pods for the current user
+export const getUserPods = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const memberships = await prisma.podMember.findMany({
+      where: { userId },
+      include: {
+        pod: {
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const pods = memberships.map((m) => ({
+      ...m.pod,
+      role: m.role,
+    }));
+
+    return res.status(200).json({ pods });
+  } catch (error) {
+    console.error("Error fetching user pods:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const createPod = async (req, res) => {
   try {
     const { name, description } = req.body;
     const userId = req.user.id; // From authMiddleware
 
-    // 🔹 Step 1: Check if user linked GitHub
+    // dY"1 Step 1: Check if user linked GitHub
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { githubId: true },
@@ -17,7 +55,7 @@ export const createPod = async (req, res) => {
       });
     }
 
-    // 🔹 Step 2: Proceed with pod creation
+    // dY"1 Step 2: Proceed with pod creation
     const pod = await prisma.pod.create({
       data: {
         name,
@@ -33,7 +71,7 @@ export const createPod = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Pod created successfully ✅",
+      message: "Pod created successfully 🚀.",
       pod,
     });
 
@@ -184,11 +222,69 @@ export const addMember = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Member added successfully ✅",
+      message: "Member added successfully 🚀.",
       member: podMember,
     });
   } catch (error) {
     console.error("Error adding member:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /pods/:id/stats - Get aggregated stats for the pod
+export const getPodStats = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id; // From authMiddleware
+
+    // Check if user is a member of the pod
+    const membership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({
+        error: "You are not a member of this pod",
+      });
+    }
+
+    // Parallel fetch for potential performance win
+    const [tasks, activities] = await Promise.all([
+      prisma.task.findMany({
+        where: { podId },
+        select: { status: true }
+      }),
+      prisma.activity.findMany({
+        where: { podId, type: 'commit' },
+        select: { id: true }
+      })
+    ]);
+
+    // Calculate Task Stats
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'done').length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Calculate Commit Stats (Basic)
+    const commitsCount = activities.length;
+
+    // Mocking other stats for now until integrations are deeper
+    const stats = {
+      commits: { value: commitsCount.toString(), trend: '+5%', trendUp: true, unit: '' },
+      prs: { value: '0', trend: '0%', trendUp: true, unit: '' }, // Need PR activity type
+      uptime: { value: '99.9', unit: '%', trend: '', trendUp: true },
+      health: completionRate // Use task completion as a proxy for "health"
+    };
+
+    return res.status(200).json({ stats });
+
+  } catch (error) {
+    console.error("Error fetching pod stats:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

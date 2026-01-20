@@ -1,73 +1,52 @@
 
-
-
-// Mock Data
-const MEMBER_RANKINGS = [
-    {
-        id: '1',
-        rank: 1,
-        name: 'Alex Rivera',
-        role: 'Lead Architect',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-        xp: 12450,
-        level: 42,
-        contributions: 156,
-        badges: ['Architect', 'Bug Hunter', 'Veteran'],
-        trend: '+240 XP',
-        trendUp: true
-    },
-    {
-        id: '2',
-        rank: 2,
-        name: 'Sam Chen',
-        role: 'Backend Developer',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sam',
-        xp: 9800,
-        level: 35,
-        contributions: 132,
-        badges: ['Speed Demon', 'Fixer'],
-        trend: '+120 XP',
-        trendUp: true
-    },
-    {
-        id: '3',
-        rank: 3,
-        name: 'Jordan Smith',
-        role: 'DevOps Engineer',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan',
-        xp: 8500,
-        level: 31,
-        contributions: 98,
-        badges: ['Infrastructure', 'Cloud Ninja'],
-        trend: '+85 XP',
-        trendUp: true
-    }
-];
-
-const RECENT_ACHIEVEMENTS = [
-    {
-        id: '1',
-        user: 'Alex Rivera',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-        title: 'Merged 50 PRs',
-        description: 'Reached a milestone of 50 Pull Requests merged into main.',
-        xp: 500,
-        time: '2 hours ago',
-        icon: '🚀'
-    },
-    {
-        id: '2',
-        user: 'Sam Chen',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sam',
-        title: 'Bug Exterminator',
-        description: 'Fixed a critical P0 bug in production.',
-        xp: 1000,
-        time: 'Yesterday',
-        icon: '🐛'
-    }
-];
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { podService, type LeaderboardMember, type Achievement } from '../services/podService';
 
 const PodRewards = () => {
+    const { id: podId } = useParams<{ id: string }>();
+    const [leaderboard, setLeaderboard] = useState<LeaderboardMember[]>([]);
+    const [achievements, setAchievements] = useState<Achievement[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!podId) return;
+            try {
+                const [lbResponse, achResponse] = await Promise.all([
+                    podService.getPodLeaderboard(podId),
+                    podService.getPodAchievements(podId)
+                ]);
+                setLeaderboard(lbResponse.leaderboard);
+                setAchievements(achResponse.achievements);
+            } catch (error) {
+                console.error("Failed to fetch rewards data", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [podId]);
+
+    // Calculate team stats based on leaderboard
+    const totalTeamXP = leaderboard.reduce((sum, member) => sum + member.totalPoints, 0);
+
+    const getBadgeIcon = (badge: string) => {
+        const map: Record<string, string> = {
+            'repo-creator': '📁',
+            'committer': '🔨',
+            'super-committer': '🔥',
+            'mentor': '🎓',
+            'bug-fixer': '🐛'
+        };
+        return map[badge] || '🏅';
+    };
+
+    if (loading) {
+        return <div className="h-full flex items-center justify-center text-text-secondary">Loading team data...</div>;
+    }
+
     return (
         <div className="h-full flex gap-6 overflow-hidden">
             {/* Main Content - Leaderboard */}
@@ -75,11 +54,9 @@ const PodRewards = () => {
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center gap-2 text-xs text-text-secondary mb-1">
-                        <span>Pods</span>
+                        <span>My Pods</span>
                         <span>/</span>
-                        <span>Project Alpha</span>
-                        <span>/</span>
-                        <span className="text-text-primary">Rewards</span>
+                        <span className="text-text-primary">Leadership Board</span>
                     </div>
                     <h1 className="text-3xl font-bold text-text-primary mb-2">Team Leadership</h1>
                     <p className="text-text-secondary text-sm">Recognizing contributions and celebrating team milestones.</p>
@@ -92,27 +69,22 @@ const PodRewards = () => {
                             <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">Total Team XP</span>
                             <svg className="w-5 h-5 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
                         </div>
-                        <div className="text-3xl font-bold text-white mb-1">30,750</div>
-                        <div className="text-xs text-text-secondary">Top 5% of all Pods</div>
+                        <div className="text-3xl font-bold text-white mb-1">{totalTeamXP.toLocaleString()}</div>
+                        <div className="text-xs text-text-secondary">Tracked across all activities</div>
                     </div>
                     <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Sprint Goal</span>
+                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Active Members</span>
                         </div>
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-3xl font-bold text-white">85%</span>
-                            <span className="text-xs text-cyan-500">On Track</span>
-                        </div>
-                        <div className="w-full bg-background-border/30 h-1.5 rounded-full overflow-hidden">
-                            <div className="h-full bg-cyan-500 w-[85%] rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
-                        </div>
+                        <div className="text-3xl font-bold text-white mb-1">{leaderboard.length}</div>
+                        <div className="text-xs text-cyan-500">Contributing daily</div>
                     </div>
                     <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Active Streak</span>
+                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Milestones Met</span>
                         </div>
-                        <div className="text-3xl font-bold text-white mb-1">12 Days</div>
-                        <div className="text-xs text-green-500 font-bold">New Record!</div>
+                        <div className="text-3xl font-bold text-white mb-1">{achievements.length}</div>
+                        <div className="text-xs text-green-500 font-bold">New records!</div>
                     </div>
                 </div>
 
@@ -120,10 +92,6 @@ const PodRewards = () => {
                 <div className="bg-background-surface border border-background-border rounded-2xl overflow-hidden mb-8">
                     <div className="p-6 border-b border-background-border flex justify-between items-center">
                         <h3 className="font-bold text-text-primary text-lg">Leaderboard</h3>
-                        <div className="flex gap-2">
-                            <button className="px-3 py-1.5 text-xs font-bold bg-primary/20 text-primary border border-primary/20 rounded-lg">All Time</button>
-                            <button className="px-3 py-1.5 text-xs font-bold text-text-secondary hover:text-text-primary transition-colors">This Sprint</button>
-                        </div>
                     </div>
                     <table className="w-full">
                         <thead className="bg-background/50 text-xs font-bold text-text-secondary uppercase tracking-wider text-left">
@@ -131,34 +99,27 @@ const PodRewards = () => {
                                 <th className="px-6 py-4 w-16">Rank</th>
                                 <th className="px-6 py-4">Member</th>
                                 <th className="px-6 py-4">Level</th>
-                                <th className="px-6 py-4">Contributions</th>
                                 <th className="px-6 py-4">XP</th>
-                                <th className="px-6 py-4 text-right">Trend</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-background-border">
-                            {MEMBER_RANKINGS.map((member) => (
+                            {leaderboard.map((member, index) => (
                                 <tr key={member.id} className="hover:bg-background/30 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
-                                            ${member.rank === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
-                                                member.rank === 2 ? 'bg-gray-400/20 text-gray-400 border border-gray-400/50' :
-                                                    member.rank === 3 ? 'bg-orange-700/20 text-orange-700 border border-orange-700/50' :
+                                            ${index + 1 === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
+                                                index + 1 === 2 ? 'bg-gray-400/20 text-gray-400 border border-gray-400/50' :
+                                                    index + 1 === 3 ? 'bg-orange-700/20 text-orange-700 border border-orange-700/50' :
                                                         'text-text-secondary'}`}>
-                                            {member.rank}
+                                            {index + 1}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <img src={member.avatar} alt={member.name} className="w-10 h-10 rounded-full border border-background-border" />
+                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} alt={member.name} className="w-10 h-10 rounded-full border border-background-border" />
                                             <div>
                                                 <div className="font-bold text-text-primary">{member.name}</div>
-                                                <div className="text-xs text-text-secondary">{member.role}</div>
-                                            </div>
-                                            <div className="flex gap-1 ml-2">
-                                                {member.badges.slice(0, 2).map(badge => (
-                                                    <span key={badge} className="text-[9px] px-1.5 py-0.5 bg-background-border/50 rounded text-text-secondary border border-background-border">{badge}</span>
-                                                ))}
+                                                <div className="text-xs text-text-secondary capitalize">{member.role}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -166,17 +127,11 @@ const PodRewards = () => {
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-text-primary">{member.level}</span>
                                             <div className="w-20 h-1.5 bg-background-border rounded-full overflow-hidden">
-                                                <div className="h-full bg-primary" style={{ width: `${(member.xp % 1000) / 10}%` }}></div>
+                                                <div className="h-full bg-primary" style={{ width: `${(member.totalPoints % 1000) / 10}%` }}></div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-text-secondary">{member.contributions}</td>
-                                    <td className="px-6 py-4 font-bold text-primary">{member.xp.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded">
-                                            {member.trend}
-                                        </span>
-                                    </td>
+                                    <td className="px-6 py-4 font-bold text-primary">{member.totalPoints.toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -189,25 +144,29 @@ const PodRewards = () => {
                 <div className="bg-background-surface border border-background-border rounded-xl p-6">
                     <h3 className="text-lg font-bold text-text-primary mb-4">Recent Achievements</h3>
                     <div className="space-y-6">
-                        {RECENT_ACHIEVEMENTS.map(achievement => (
+                        {achievements.length > 0 ? achievements.map(achievement => (
                             <div key={achievement.id} className="relative pl-6 pb-6 border-l border-background-border last:pb-0 last:border-0">
                                 <div className="absolute left-[-12px] top-0 w-6 h-6 rounded-full bg-background-surface border border-background-border flex items-center justify-center text-sm shadow-sm z-10">
-                                    {achievement.icon}
+                                    {getBadgeIcon(achievement.badge)}
                                 </div>
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
-                                        <h4 className="font-bold text-text-primary text-sm">{achievement.title}</h4>
-                                        <span className="text-xs font-bold text-yellow-500">+{achievement.xp} XP</span>
+                                        <h4 className="font-bold text-text-primary text-sm capitalize">{achievement.badge.replace('-', ' ')}</h4>
+                                        <span className="text-xs font-bold text-yellow-500">+{achievement.points} XP</span>
                                     </div>
-                                    <p className="text-xs text-text-secondary mb-3">{achievement.description}</p>
+                                    <p className="text-xs text-text-secondary mb-3">{achievement.reason}</p>
                                     <div className="flex items-center gap-2">
-                                        <img src={achievement.avatar} alt={achievement.user} className="w-5 h-5 rounded-full" />
+                                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${achievement.user}`} alt={achievement.user} className="w-5 h-5 rounded-full" />
                                         <span className="text-xs font-bold text-text-primary">{achievement.user}</span>
-                                        <span className="text-[10px] text-text-secondary">• {achievement.time}</span>
+                                        <span className="text-[10px] text-text-secondary">• {new Date(achievement.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="text-center py-4">
+                                <p className="text-xs text-text-secondary italic">No recent achievements found. Keep pushing to earn badges!</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -216,14 +175,7 @@ const PodRewards = () => {
                         <span className="text-2xl">🏆</span>
                     </div>
                     <h3 className="font-bold text-text-primary mb-1">Weekly Challenge</h3>
-                    <p className="text-xs text-text-secondary mb-4">Complete 10 Code Reviews this week to earn the "Mentor" badge and 500 XP.</p>
-                    <div className="w-full bg-background/50 h-2 rounded-full overflow-hidden mb-2">
-                        <div className="h-full bg-primary w-[40%] rounded-full shadow-[0_0_10px_rgba(88,166,154,0.5)]"></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-text-secondary font-bold uppercase tracking-wider">
-                        <span>4/10</span>
-                        <span>40%</span>
-                    </div>
+                    <p className="text-xs text-text-secondary mb-4">Complete your assigned tasks to earn the "High Achiever" badge and 500 XP.</p>
                 </div>
             </div>
         </div>

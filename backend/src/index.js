@@ -8,6 +8,7 @@ import taskRoutes from "./routes/taskRoutes.js";
 import rewardRoutes from "./routes/rewardRoutes.js";
 import githubAuth from "./routes/githubAuth.js";
 import githubRoutes from "./routes/githubRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/rewards", rewardRoutes);
 app.use("/api/auth/github", githubAuth);
 app.use("/api/github", githubRoutes);
+app.use("/api/ai", aiRoutes);
 
 // ✅ Health check route
 app.get("/", (req, res) => {
