@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { userService } from '../services/userService';
 
 interface UserProfileProps {
     embed?: boolean;
@@ -8,26 +8,38 @@ interface UserProfileProps {
 
 const UserProfile = ({ embed = false }: UserProfileProps) => {
     const navigate = useNavigate();
-    const [user, setUser] = useState<any>(null);
+    const [profileData, setProfileData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        } else {
-            // Fallback for demo if no user logged in
-            setUser({
-                name: 'Alex Rivera',
-                email: 'alex@codepods.io',
-                githubId: 'arivera',
-                role: 'Senior Full Stack Engineer',
-                location: 'San Francisco, CA',
-                website: 'arivera.dev'
-            });
-        }
+        const fetchProfile = async () => {
+            try {
+                const data = await userService.getProfile();
+                setProfileData(data);
+            } catch (error) {
+                console.error("Failed to fetch profile", error);
+                // Fallback to local storage if API fails
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    setProfileData({ user: JSON.parse(storedUser), pods: [], rewards: [], activities: [], totalPoints: 0 });
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfile();
     }, []);
 
-    if (!user) return null;
+    if (isLoading) return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+
+    if (!profileData) return null;
+
+    const { user, pods, totalPoints, activities, badgeCount } = profileData;
 
     return (
         <div className={`min-h-screen bg-background text-text-primary font-sans selection:bg-primary selection:text-white ${embed ? 'min-h-0' : ''}`}>
@@ -110,19 +122,19 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                         {/* Stats Cards */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-background-surface border border-background-border rounded-xl p-5">
-                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Total Contributions</div>
-                                <div className="text-3xl font-bold text-white mb-1">1,284</div>
+                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Total XP</div>
+                                <div className="text-3xl font-bold text-white mb-1">{totalPoints}</div>
                                 <div className="text-[10px] font-bold text-green-500 flex items-center gap-1">
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                                    +12% this month
+                                    Level Up Soon
                                 </div>
                             </div>
                             <div className="bg-background-surface border border-background-border rounded-xl p-5">
                                 <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Pods Joined</div>
-                                <div className="text-3xl font-bold text-white mb-1">14</div>
+                                <div className="text-3xl font-bold text-white mb-1">{pods.length}</div>
                                 <div className="text-[10px] font-bold text-cyan-500 flex items-center gap-1">
                                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                    +2 new Pods
+                                    {pods.length > 0 ? 'Active Member' : 'Join a Pod'}
                                 </div>
                             </div>
                         </div>
@@ -154,7 +166,10 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
 
                         {/* Earned Badges */}
                         <div className="bg-background-surface border border-background-border rounded-xl p-6">
-                            <h3 className="font-bold text-text-primary mb-4">Earned Badges</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-text-primary">Earned Badges</h3>
+                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{badgeCount}</span>
+                            </div>
                             <div className="flex gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 hover:scale-105 transition-transform cursor-pointer" title="Gold Contributor">
                                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
@@ -186,66 +201,38 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                             </div>
                             <div className="p-6">
                                 <ol className="relative border-l border-background-border ml-3 space-y-8">
-                                    {/* Item 1 */}
-                                    <li className="ml-6">
-                                        <div className="absolute w-8 h-8 bg-background-surface rounded-full -left-4 border border-cyan-500/50 flex items-center justify-center text-cyan-500 z-10 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <h4 className="font-bold text-text-primary">Merged 12 PRs in <span className="text-cyan-500">@codepods/core-engine</span></h4>
-                                            <p className="text-sm text-text-secondary">Optimized the concurrency model for pod sync operations. Achieved 20% latency reduction.</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <span className="text-xs text-text-secondary">2 hours ago</span>
-                                                <span className="text-[10px] font-bold bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded uppercase">Merged</span>
-                                            </div>
-                                        </div>
-                                    </li>
-
-                                    {/* Item 2 */}
-                                    <li className="ml-6">
-                                        <div className="absolute w-8 h-8 bg-background-surface rounded-full -left-4 border border-purple-500/50 flex items-center justify-center text-purple-500 z-10 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <h4 className="font-bold text-text-primary">Earned Badge: <span className="text-purple-400">Pod Catalyst</span></h4>
-                                            <p className="text-sm text-text-secondary">Successfully led a Pod of 5 developers to ship the v2.0 update of the Rust CLI tools.</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <span className="text-xs text-text-secondary">2 days ago</span>
-                                                <div className="flex -space-x-1">
-                                                    <div className="w-4 h-4 rounded-full bg-background-border"></div>
-                                                    <div className="w-4 h-4 rounded-full bg-background-border/50"></div>
+                                    {activities.length === 0 ? (
+                                        <div className="text-sm text-text-secondary py-4">No recent activity found.</div>
+                                    ) : (
+                                        activities.map((activity: any) => (
+                                            <li key={activity.id} className="ml-6">
+                                                <div className={`absolute w-8 h-8 bg-background-surface rounded-full -left-4 border ${activity.type === 'commit' ? 'border-cyan-500/50 text-cyan-500' :
+                                                    activity.type === 'repo_created' ? 'border-purple-500/50 text-purple-500' :
+                                                        'border-background-border text-text-secondary'
+                                                    } flex items-center justify-center z-10 shadow-sm`}>
+                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        {activity.type === 'commit' ? (
+                                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                                                        ) : (
+                                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                                        )}
+                                                    </svg>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </li>
-
-                                    {/* Item 3 */}
-                                    <li className="ml-6">
-                                        <div className="absolute w-8 h-8 bg-background-surface rounded-full -left-4 border border-background-border flex items-center justify-center text-text-secondary z-10">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <h4 className="font-bold text-text-primary">Joined <span className="text-cyan-500">WebAssembly-Guild</span> Pod</h4>
-                                            <p className="text-sm text-text-secondary">Exploring high-performance edge computing modules using WASM and Rust.</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <span className="text-xs text-text-secondary">1 week ago</span>
-                                            </div>
-                                        </div>
-                                    </li>
-
-                                    {/* Item 4 */}
-                                    <li className="ml-6">
-                                        <div className="absolute w-8 h-8 bg-background-surface rounded-full -left-4 border border-yellow-500/50 flex items-center justify-center text-yellow-500 z-10 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <h4 className="font-bold text-text-primary">Project Milestone: <span className="text-yellow-500">1,000 Stars reached</span></h4>
-                                            <p className="text-sm text-text-secondary">Your open source contribution to "The Great Rust Framework" reached a major milestone.</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <span className="text-xs text-text-secondary">Oct 12, 2023</span>
-                                            </div>
-                                        </div>
-                                    </li>
+                                                <div className="flex flex-col gap-1">
+                                                    <h4 className="font-bold text-text-primary">
+                                                        {activity.type === 'commit' ? `Committed to ${activity.meta?.repoName || 'repository'}` :
+                                                            activity.type === 'repo_created' ? `Created repository ${activity.meta?.repoName}` :
+                                                                'User Activity'}
+                                                    </h4>
+                                                    <p className="text-sm text-text-secondary">{activity.meta?.message || 'Activity synchronized from GitHub.'}</p>
+                                                    <div className="flex items-center gap-3 mt-1">
+                                                        <span className="text-xs text-text-secondary">{new Date(activity.createdAt).toLocaleDateString()}</span>
+                                                        <span className="text-[10px] font-bold bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded uppercase">{activity.type}</span>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))
+                                    )}
                                 </ol>
                             </div>
                             <div className="p-4 border-t border-background-border text-center">

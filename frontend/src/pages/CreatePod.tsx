@@ -68,8 +68,9 @@ const CreatePod = () => {
     };
 
     const handleGitHubConnect = () => {
-        // Redirect to backend GitHub auth endpoint
-        window.location.href = 'http://localhost:5000/api/auth/github/login';
+        const token = localStorage.getItem('token');
+        // Redirect to backend GitHub auth endpoint with current token for linking
+        window.location.href = `http://localhost:5000/api/auth/github/login?token=${token}`;
     };
 
     if (!user) return null;

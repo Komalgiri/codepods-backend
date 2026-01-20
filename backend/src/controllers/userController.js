@@ -71,3 +71,58 @@ export const login = async (req, res) => {
   }
 };
 
+// Get user profile including pods and rewards
+export const getProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // Or from params if viewing others
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        githubId: true,
+        createdAt: true,
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Fetch pods
+    const memberships = await prisma.podMember.findMany({
+      where: { userId },
+      include: {
+        pod: true
+      }
+    });
+
+    // Fetch rewards
+    const rewards = await prisma.reward.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Fetch activities
+    const activities = await prisma.activity.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    const totalPoints = rewards.reduce((sum, r) => sum + (r.points || 0), 0);
+
+    res.json({
+      user,
+      pods: memberships.map(m => ({ ...m.pod, role: m.role })),
+      rewards,
+      totalPoints,
+      activities,
+      badgeCount: [...new Set(rewards.flatMap(r => r.badges))].length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

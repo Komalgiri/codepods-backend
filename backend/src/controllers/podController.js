@@ -4,6 +4,7 @@ import prisma from "../utils/prismaClient.js";
 export const getUserPods = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log(`[DEBUG] Fetching pods for userId: ${userId}`);
 
     const memberships = await prisma.podMember.findMany({
       where: { userId },
@@ -25,6 +26,8 @@ export const getUserPods = async (req, res) => {
         },
       },
     });
+
+    console.log(`[DEBUG] Found ${memberships.length} memberships for user ${userId}`);
 
     const pods = memberships.map((m) => ({
       ...m.pod,
