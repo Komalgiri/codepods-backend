@@ -3,6 +3,8 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import UserDashboard from "./pages/UserDashboard";
 import CreatePod from "./pages/CreatePod";
+import PodOverview from "./pages/PodOverview";
+import AuthCallback from "./pages/AuthCallback";
 
 function App() {
   return (
@@ -10,8 +12,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/create-pod" element={<CreatePod />} />
+        <Route path="/pod/:id" element={<PodOverview />} />
       </Routes>
     </BrowserRouter>
   );

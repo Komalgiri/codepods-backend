@@ -65,7 +65,8 @@ router.get("/callback", async (req, res) => {
     );
 
     // Send JWT back
-    res.json({ token });
+    // Redirect to frontend with token
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${token}`);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "GitHub OAuth failed" });

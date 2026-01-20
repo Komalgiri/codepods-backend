@@ -57,7 +57,10 @@ const CreatePod = () => {
                 // Note: Tech stack is not yet supported by backend create endpoint, 
                 // but we keep it in UI as requested.
             });
-            navigate('/dashboard');
+            // Should fetch the new pod ID to redirect to /pod/:id
+            // For now, since generic ID, we redirect to a mock one or Dashboard
+            // User requested: "it should go back to a page name podoverview.tsx"
+            navigate('/pod/active-pod');
         } catch (err: any) {
             setError(err.message);
         } finally {
