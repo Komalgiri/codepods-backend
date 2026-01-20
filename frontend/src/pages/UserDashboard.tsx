@@ -102,14 +102,18 @@ const UserDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-text-secondary">
-                                {rewards?.points || 0} XP
-                            </span>
-                            <div className="h-4 w-[1px] bg-background-border"></div>
-                            <span className="text-sm font-bold text-text-primary">
-                                {user.name}
-                            </span>
+                        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/profile')}>
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">{user.name}</span>
+                                <span className="text-xs font-medium text-text-secondary">{rewards?.points || 0} XP</span>
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary p-[1px] group-hover:ring-2 group-hover:ring-primary transition-all">
+                                <img
+                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
+                                    alt="Profile"
+                                    className="w-full h-full rounded-full bg-background-surface"
+                                />
+                            </div>
                         </div>
                         <button
                             onClick={handleLogout}
