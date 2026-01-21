@@ -1,4 +1,6 @@
 import prisma from "../utils/prismaClient.js";
+import { Octokit } from "octokit";
+import { syncRepoActivity } from "../services/githubService.js";
 
 // GET /pods - Fetch all pods for the current user
 export const getUserPods = async (req, res) => {
@@ -257,13 +259,20 @@ export const getPodStats = async (req, res) => {
     }
 
     // Parallel fetch for potential performance win
-    const [tasks, activities] = await Promise.all([
+    const [tasks, commitActivities, prActivities] = await Promise.all([
       prisma.task.findMany({
         where: { podId },
         select: { status: true }
       }),
       prisma.activity.findMany({
         where: { podId, type: 'commit' },
+        select: { id: true }
+      }),
+      prisma.activity.findMany({
+        where: {
+          podId,
+          type: { in: ['pr_opened', 'pr_merged'] }
+        },
         select: { id: true }
       })
     ]);
@@ -273,21 +282,232 @@ export const getPodStats = async (req, res) => {
     const completedTasks = tasks.filter(t => t.status === 'done').length;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    // Calculate Commit Stats (Basic)
-    const commitsCount = activities.length;
+    // Calculate GitHub Stats
+    const commitsCount = commitActivities.length;
+    const prsCount = prActivities.length;
 
-    // Mocking other stats for now until integrations are deeper
+    // Weekly Stats (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Note: activity.createdAt is what we check
+    // Since we didn't include createdAt in the initial select, we need to add it or fetch again
+    // Let's refetch with createdAt for accuracy
+    const [weeklyCommitsCount, weeklyPrsCount] = await Promise.all([
+      prisma.activity.count({
+        where: {
+          podId,
+          type: 'commit',
+          createdAt: { gte: sevenDaysAgo }
+        }
+      }),
+      prisma.activity.count({
+        where: {
+          podId,
+          type: { in: ['pr_opened', 'pr_merged'] },
+          createdAt: { gte: sevenDaysAgo }
+        }
+      })
+    ]);
+
     const stats = {
-      commits: { value: commitsCount.toString(), trend: '+5%', trendUp: true, unit: '' },
-      prs: { value: '0', trend: '0%', trendUp: true, unit: '' }, // Need PR activity type
-      uptime: { value: '99.9', unit: '%', trend: '', trendUp: true },
-      health: completionRate // Use task completion as a proxy for "health"
+      commits: {
+        value: commitsCount.toString(),
+        trend: weeklyCommitsCount > 0 ? `+${weeklyCommitsCount} this week` : '0 this week',
+        trendUp: true,
+        unit: ''
+      },
+      prs: {
+        value: prsCount.toString(),
+        trend: weeklyPrsCount > 0 ? `+${weeklyPrsCount} this week` : '0 this week',
+        trendUp: true,
+        unit: ''
+      },
+      weeklyCommits: {
+        value: weeklyCommitsCount.toString(),
+        unit: 'this week'
+      },
+      uptime: { value: '99.9', unit: '%', trend: 'Stable', trendUp: true },
+      health: completionRate
     };
 
     return res.status(200).json({ stats });
 
   } catch (error) {
     console.error("Error fetching pod stats:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// PATCH /pods/:id - Update pod details (like repository)
+export const updatePod = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const { name, description, repoOwner, repoName } = req.body;
+    const userId = req.user.id;
+
+    // Check if user is admin
+    const membership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!membership || membership.role !== "admin") {
+      return res.status(403).json({ error: "Only admins can update pod details" });
+    }
+
+    const updatedPod = await prisma.pod.update({
+      where: { id: podId },
+      data: {
+        name,
+        description,
+        repoOwner,
+        repoName
+      },
+    });
+
+    // If repository information was updated, trigger a sync
+    if (repoOwner && repoName) {
+      console.log(`[DEBUG] Triggering GitHub sync for pod ${podId} with repo ${repoOwner}/${repoName}`);
+      syncRepoActivity(podId, repoOwner, repoName)
+        .then(results => console.log(`[DEBUG] Sync completed for pod ${podId}:`, results))
+        .catch(err => console.error(`[ERROR] Sync failed for pod ${podId}:`, err));
+    }
+
+    return res.status(200).json({
+      message: "Pod updated successfully 🚀",
+      pod: updatedPod,
+    });
+  } catch (error) {
+    console.error("Error updating pod:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /pods/:id/activities - Fetch activities for the pod
+export const getPodActivities = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id;
+
+    // Check membership
+    const membership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "You are not a member of this pod" });
+    }
+
+    const activities = await prisma.activity.findMany({
+      where: { podId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            githubUsername: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return res.status(200).json({ activities });
+  } catch (error) {
+    console.error("Error fetching pod activities:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// PATCH /pods/:id/members/:memberId - Update member role
+export const updateMemberRole = async (req, res) => {
+  try {
+    const { id: podId, memberId } = req.params;
+    const { role } = req.body;
+    const userId = req.user.id;
+
+    // Check if requester is admin
+    const requesterMembership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!requesterMembership || requesterMembership.role !== "admin") {
+      return res.status(403).json({ error: "Only admins can change roles" });
+    }
+
+    // Update member role
+    const updatedMember = await prisma.podMember.update({
+      where: { id: memberId },
+      data: { role },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      message: "Member role updated successfully",
+      member: updatedMember,
+    });
+  } catch (error) {
+    console.error("Error updating member role:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /pods/:id/sync - Trigger a manual sync of repository activity
+export const syncPodActivity = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id;
+
+    // Check if pod exists and user is a member
+    const pod = await prisma.pod.findUnique({
+      where: { id: podId },
+      include: {
+        members: {
+          where: { userId }
+        }
+      }
+    });
+
+    if (!pod) return res.status(404).json({ error: "Pod not found in controller" });
+    if (pod.members.length === 0) return res.status(403).json({ error: "Not a member" });
+
+    if (!pod.repoOwner || !pod.repoName) {
+      return res.status(400).json({ error: "No repository linked to this pod" });
+    }
+
+    // Trigger sync
+    const results = await syncRepoActivity(podId, pod.repoOwner, pod.repoName);
+
+    return res.status(200).json({
+      message: "Sync completed",
+      results
+    });
+  } catch (error) {
+    console.error("Error syncing pod activity:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

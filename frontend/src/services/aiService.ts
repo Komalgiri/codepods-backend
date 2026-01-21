@@ -6,11 +6,20 @@ export interface RoadmapStage {
     title: string;
     description: string;
     status: 'COMPLETED' | 'IN PROGRESS' | 'UPCOMING';
-    tasks: { name: string; status: 'done' | 'progress' | 'pending'; progress?: number }[];
+    tasks: { name: string; status: 'done' | 'progress' | 'pending'; progress?: number; assignee?: string }[];
+}
+
+export interface TeamAllocationMember {
+    id: string;
+    name: string;
+    role: string;
+    match: number;
 }
 
 export interface RoadmapResponse {
+    stage: string;
     roadmap: RoadmapStage[];
+    members: TeamAllocationMember[];
     confidence: number;
     duration: string;
     efficiency: string;

@@ -26,8 +26,9 @@ model User {
   createdAt    DateTime     @default(now())
 
   // GitHub OAuth fields
-  githubId     String?      @unique
-  githubToken  String?      // we'll encrypt this
+  githubId       String?      @unique
+  githubUsername String?      @unique
+  githubToken    String?      // we'll encrypt this
 }
 
 //////////////////////////

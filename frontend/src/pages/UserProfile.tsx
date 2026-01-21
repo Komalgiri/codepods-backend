@@ -208,11 +208,15 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                                             <li key={activity.id} className="ml-6">
                                                 <div className={`absolute w-8 h-8 bg-background-surface rounded-full -left-4 border ${activity.type === 'commit' ? 'border-cyan-500/50 text-cyan-500' :
                                                     activity.type === 'repo_created' ? 'border-purple-500/50 text-purple-500' :
-                                                        'border-background-border text-text-secondary'
+                                                        activity.type === 'pr_opened' ? 'border-blue-500/50 text-blue-500' :
+                                                            activity.type === 'pr_merged' ? 'border-green-500/50 text-green-500' :
+                                                                'border-background-border text-text-secondary'
                                                     } flex items-center justify-center z-10 shadow-sm`}>
                                                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                         {activity.type === 'commit' ? (
                                                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                                                        ) : activity.type.startsWith('pr') ? (
+                                                            <path d="M15 14h5v-2h-5v-6h2v-2h-6v2h2v4h-6v-4h2v-2h-6v2h2v6h-5v2h5v6h-2v2h6v-2h-2v-4h6v4h-2v2h6v-2h-2v-6z" />
                                                         ) : (
                                                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                                                         )}
@@ -222,7 +226,9 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                                                     <h4 className="font-bold text-text-primary">
                                                         {activity.type === 'commit' ? `Committed to ${activity.meta?.repoName || 'repository'}` :
                                                             activity.type === 'repo_created' ? `Created repository ${activity.meta?.repoName}` :
-                                                                'User Activity'}
+                                                                activity.type === 'pr_opened' ? `Opened PR #${activity.meta?.prNumber} in ${activity.meta?.repoName}` :
+                                                                    activity.type === 'pr_merged' ? `Merged PR #${activity.meta?.prNumber} in ${activity.meta?.repoName}` :
+                                                                        'User Activity'}
                                                     </h4>
                                                     <p className="text-sm text-text-secondary">{activity.meta?.message || 'Activity synchronized from GitHub.'}</p>
                                                     <div className="flex items-center gap-3 mt-1">

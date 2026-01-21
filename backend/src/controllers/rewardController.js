@@ -151,7 +151,13 @@ export const getPodLeaderboard = async (req, res) => {
       include: {
         user: {
           include: {
-            rewards: true, // Include rewards to calculate total points
+            rewards: {
+              select: { points: true }
+            },
+            activities: {
+              where: { podId }, // Points specific to THIS pod
+              select: { value: true }
+            },
           },
         },
       },
@@ -160,16 +166,19 @@ export const getPodLeaderboard = async (req, res) => {
     // Calculate total points for each member and sort
     const leaderboard = members
       .map((member) => {
-        const totalPoints = member.user.rewards.reduce((sum, reward) => sum + reward.points, 0);
+        const rewardPoints = member.user.rewards.reduce((sum, r) => sum + (r.points || 0), 0);
+        const activityPoints = member.user.activities.reduce((sum, a) => sum + (a.value || 0), 0);
+        const totalPoints = rewardPoints + activityPoints;
+
         return {
           id: member.user.id,
           name: member.user.name,
           email: member.user.email,
           role: member.role,
           totalPoints,
-          // Add default badges or fetch from a 'UserBadges' relation if it existed
-          badges: [],
-          level: Math.floor(totalPoints / 1000) + 1, // Simple level calculation
+          githubUsername: member.user.githubUsername,
+          badges: [...new Set(member.user.rewards.flatMap(r => r.badges || []))],
+          level: Math.floor(totalPoints / 500) + 1, // Adjusted level calculation
         };
       })
       .sort((a, b) => b.totalPoints - a.totalPoints);
@@ -206,30 +215,71 @@ export const getPodAchievements = async (req, res) => {
 
     const userIds = members.map(m => m.userId);
 
-    // Fetch recent rewards for these users
-    const achievements = await prisma.reward.findMany({
+    // 1. Fetch recent rewards (badges/manual points)
+    const recentRewards = await prisma.reward.findMany({
       where: {
         userId: { in: userIds },
-        badges: { path: [], not: [] } // Has at least one badge
+        OR: [
+          { badges: { isEmpty: false } }, // Achievements with badges
+          { points: { gt: 0 } }            // Or just actual points given
+        ]
       },
       include: {
-        user: {
-          select: { id: true, name: true }
-        }
+        user: { select: { id: true, name: true } }
       },
       orderBy: { createdAt: 'desc' },
       take: 10
     });
 
-    return res.status(200).json({
-      achievements: achievements.map(a => ({
+    // 2. Fetch recent activities (commits, prs, etc.)
+    const recentActivities = await prisma.activity.findMany({
+      where: {
+        podId,
+        value: { gt: 0 }
+      },
+      include: {
+        user: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    // 3. Merge and format
+    const formattedRewards = recentRewards.map(r => ({
+      id: r.id,
+      user: r.user.name,
+      badge: r.badges[0] || (r.points >= 100 ? 'milestone' : 'reward'),
+      points: r.points,
+      reason: r.reason || 'Awarded points',
+      time: r.createdAt,
+      type: 'reward'
+    }));
+
+    const formattedActivities = recentActivities.map(a => {
+      let badgeType = 'activity';
+      let title = a.type;
+
+      if (a.type === 'commit') { badgeType = 'committer'; title = 'Commit Author'; }
+      if (a.type === 'pr_opened') { badgeType = 'pr-open'; title = 'PR Creator'; }
+      if (a.type === 'pr_merged') { badgeType = 'super-committer'; title = 'Code Merger'; }
+
+      return {
         id: a.id,
         user: a.user.name,
-        badge: a.badges[0], // Show the first badge for now
-        points: a.points,
-        reason: a.reason,
-        time: a.createdAt
-      }))
+        badge: badgeType,
+        points: a.value,
+        reason: `${title} (${a.meta?.repoName || 'Repo'})`,
+        time: a.createdAt,
+        type: 'activity'
+      };
+    });
+
+    const combined = [...formattedRewards, ...formattedActivities]
+      .sort((a, b) => new Date(b.time) - new Date(a.time))
+      .slice(0, 15);
+
+    return res.status(200).json({
+      achievements: combined
     });
 
   } catch (error) {

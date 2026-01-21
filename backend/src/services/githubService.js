@@ -27,23 +27,22 @@ export const fetchUserRepos = async (accessToken) => {
 };
 
 /**
- * Fetch weekly commits for a specific repository
+ * Fetch commits for a specific repository
  * @param {string} accessToken - GitHub access token
  * @param {string} owner - Repository owner (username or org)
  * @param {string} repo - Repository name
- * @param {Date} since - Date to fetch commits since (default: 7 days ago)
+ * @param {Date} since - Date to fetch commits since (optional)
  * @returns {Promise<Array>} Array of commits
  */
-export const fetchWeeklyCommits = async (accessToken, owner, repo, since = null) => {
+export const fetchRepoCommits = async (accessToken, owner, repo, since = null) => {
   try {
-    // Default to 7 days ago if not provided
-    if (!since) {
-      const date = new Date();
-      date.setDate(date.getDate() - 7);
-      since = date;
-    }
+    const params = {
+      per_page: 100,
+    };
 
-    const sinceISO = since.toISOString();
+    if (since) {
+      params.since = since.toISOString();
+    }
 
     const response = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/commits`,
@@ -52,16 +51,53 @@ export const fetchWeeklyCommits = async (accessToken, owner, repo, since = null)
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/vnd.github.v3+json",
         },
-        params: {
-          since: sinceISO,
-          per_page: 100,
-        },
+        params: params,
       }
     );
     return response.data;
   } catch (error) {
     console.error(`Error fetching commits for ${owner}/${repo}:`, error.response?.data || error.message);
     throw new Error(`Failed to fetch commits for ${owner}/${repo}`);
+  }
+};
+
+/**
+ * Fetch weekly pull requests for a specific repository
+ * @param {string} accessToken - GitHub access token
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {Date} since - Date to fetch PRs since
+ * @returns {Promise<Array>} Array of PRs
+ */
+export const fetchWeeklyPRs = async (accessToken, owner, repo, since = null) => {
+  try {
+    if (!since) {
+      const date = new Date();
+      date.setDate(date.getDate() - 7);
+      since = date;
+    }
+
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/pulls`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+        params: {
+          state: "all",
+          sort: "created",
+          direction: "desc",
+          per_page: 100,
+        },
+      }
+    );
+
+    // Filter by date since GitHub API pulls endpoint doesn't have a 'since' parameter for PRs like commits does
+    return response.data.filter(pr => new Date(pr.created_at) >= since || new Date(pr.updated_at) >= since);
+  } catch (error) {
+    console.error(`Error fetching PRs for ${owner}/${repo}:`, error.response?.data || error.message);
+    return [];
   }
 };
 
@@ -94,29 +130,30 @@ export const storeActivity = async (userId, type, meta, podId = null) => {
   // Check for duplicate activities
   // For commits, check by SHA; for repos, check by repo name
   let existingActivity = null;
-  
+
+  // Use the actual activity date if provided in meta, otherwise default to now
+  const activityDate = meta.createdAt ? new Date(meta.createdAt) : new Date();
+
   if (type === "commit" && meta.sha) {
-    // Query activities and filter in memory (Prisma JSON queries can be complex)
+    // Check for commit SHA across a longer window to prevent duplicates during re-syncs
     const recentActivities = await prisma.activity.findMany({
       where: {
         userId,
         type,
         createdAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+          gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
         },
       },
     });
-    
-    // Check if commit SHA already exists
+
     existingActivity = recentActivities.find(
       (activity) => activity.meta && activity.meta.sha === meta.sha
     );
   } else if (type === "repo_created" && meta.repoFullName) {
-    // Check if we already tracked this repo creation in the last day
     const repoCreatedDate = new Date(meta.createdAt);
     const oneDayAfter = new Date(repoCreatedDate);
     oneDayAfter.setDate(oneDayAfter.getDate() + 1);
-    
+
     const recentActivities = await prisma.activity.findMany({
       where: {
         userId,
@@ -127,16 +164,38 @@ export const storeActivity = async (userId, type, meta, podId = null) => {
         },
       },
     });
-    
-    // Check if repo already exists
+
     existingActivity = recentActivities.find(
       (activity) => activity.meta && activity.meta.repoFullName === meta.repoFullName
     );
   }
 
-  // If activity already exists, return null
+  // If activity already exists, update the date if it's incorrect (Self-healing for wrong dates)
   if (existingActivity) {
+    if (existingActivity.createdAt.getTime() !== activityDate.getTime()) {
+      await prisma.activity.update({
+        where: { id: existingActivity.id },
+        data: { createdAt: activityDate }
+      });
+    }
     return null;
+  }
+
+  // Handle PR duplicates by HTML URL
+  if ((type === "pr_opened" || type === "pr_merged") && meta.prUrl) {
+    const recentPRActivities = await prisma.activity.findMany({
+      where: {
+        userId,
+        type,
+        createdAt: {
+          gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
+        },
+      },
+    });
+
+    if (recentPRActivities.find(a => a.meta && a.meta.prUrl === meta.prUrl)) {
+      return null;
+    }
   }
 
   const points = getActivityPoints(type);
@@ -148,6 +207,7 @@ export const storeActivity = async (userId, type, meta, podId = null) => {
       meta,
       value: points,
       podId,
+      createdAt: activityDate, // Use the ACTUAL commit/PR date here 🚀
     },
   });
 
@@ -171,7 +231,7 @@ export const convertActivitiesToReward = async (userId, activities) => {
   // Determine badges based on activity types
   const badges = [];
   const activityTypes = activities.map((a) => a.type);
-  
+
   if (activityTypes.includes("repo_created")) {
     badges.push("repo-creator");
   }
@@ -225,6 +285,7 @@ export const syncGitHubActivity = async (userId, accessToken) => {
   const results = {
     reposFetched: 0,
     commitsFetched: 0,
+    prsFetched: 0,
     activitiesCreated: 0,
     rewardsCreated: 0,
     errors: [],
@@ -239,9 +300,9 @@ export const syncGitHubActivity = async (userId, accessToken) => {
     const repos = await fetchUserRepos(accessToken);
     results.reposFetched = repos.length;
 
-    // 2. For each repo, check if it's new (created in last 7 days) and fetch commits
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // 2. For each repo, check if it's new (created in last 30 days) and fetch commits
+    const syncPeriod = new Date();
+    syncPeriod.setDate(syncPeriod.getDate() - 30); // 30 days for general activity sync
 
     const newActivities = [];
 
@@ -267,12 +328,12 @@ export const syncGitHubActivity = async (userId, accessToken) => {
           }
         }
 
-        // Fetch weekly commits for this repo
-        const commits = await fetchWeeklyCommits(
+        // Fetch commits for this repo
+        const commits = await fetchRepoCommits(
           accessToken,
           repo.owner.login,
           repo.name,
-          sevenDaysAgo
+          syncPeriod
         );
 
         results.commitsFetched += commits.length;
@@ -303,6 +364,47 @@ export const syncGitHubActivity = async (userId, accessToken) => {
             }
           }
         }
+
+        // Fetch PRs
+        const prs = await fetchWeeklyPRs(accessToken, repo.owner.login, repo.name, syncPeriod);
+        results.prsFetched += prs.length;
+
+        for (const pr of prs) {
+          if (pr.user?.login === userLogin) {
+            const isMerged = pr.merged_at && new Date(pr.merged_at) >= syncPeriod;
+            const isOpened = new Date(pr.created_at) >= syncPeriod;
+
+            if (isOpened) {
+              const activity = await storeActivity(userId, "pr_opened", {
+                prNumber: pr.number,
+                title: pr.title,
+                repoName: repo.name,
+                repoFullName: repo.full_name,
+                prUrl: pr.html_url,
+                createdAt: pr.created_at,
+              });
+              if (activity) {
+                newActivities.push(activity);
+                results.activitiesCreated++;
+              }
+            }
+
+            if (isMerged) {
+              const activity = await storeActivity(userId, "pr_merged", {
+                prNumber: pr.number,
+                title: pr.title,
+                repoName: repo.name,
+                repoFullName: repo.full_name,
+                prUrl: pr.html_url,
+                createdAt: pr.merged_at,
+              });
+              if (activity) {
+                newActivities.push(activity);
+                results.activitiesCreated++;
+              }
+            }
+          }
+        }
       } catch (error) {
         results.errors.push(`Error processing repo ${repo.full_name}: ${error.message}`);
       }
@@ -324,3 +426,148 @@ export const syncGitHubActivity = async (userId, accessToken) => {
   }
 };
 
+
+/**
+ * Sync GitHub activity for a specific repository and pod
+ * @param {string} podId - Pod ID
+ * @param {string} owner - Repo owner
+ * @param {string} repoName - Repo name
+ * @returns {Promise<object>} Results
+ */
+export const syncRepoActivity = async (podId, owner, repoName) => {
+  const results = {
+    commitsFetched: 0,
+    prsFetched: 0,
+    activitiesCreated: 0,
+    errors: [],
+  };
+
+  try {
+    // 1. Get the pod to find members (we need to match GitHub usernames to users)
+    const pod = await prisma.pod.findUnique({
+      where: { id: podId },
+      include: {
+        members: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    if (!pod) throw new Error("Pod not found");
+
+    // 2. Fetch weekly commits for this repo
+    // Note: We might not have an access token here since this is triggered by an admin
+    // We can use any member's token or a generic one if configured.
+    // For now, we'll try to find an admin with a token.
+    const adminWithToken = pod.members.find(m => m.role === 'admin' && m.user.githubToken);
+    const accessToken = adminWithToken?.user.githubToken;
+
+    if (!accessToken) {
+      // Falling back to public API if possible, or failing
+      results.errors.push("No admin with GitHub token found to sync private repos. Trying public fetch.");
+    }
+
+    const syncWindow = new Date();
+    syncWindow.setDate(syncWindow.getDate() - 365); // Fetch last 365 days for pods
+
+    const commits = await fetchRepoCommits(
+      accessToken,
+      owner,
+      repoName,
+      syncWindow
+    );
+
+    results.commitsFetched = commits.length;
+
+    // 3. For each commit, find the corresponding user in the pod
+    for (const commit of commits) {
+      const githubLogin = commit.author?.login || commit.committer?.login;
+      if (!githubLogin) continue;
+
+      // Find member with this github login
+      const member = pod.members.find(m =>
+        m.user.githubUsername === githubLogin ||
+        (m.user.name === githubLogin && !m.user.githubUsername)
+      );
+      if (member) {
+        const activity = await storeActivity(
+          member.userId,
+          "commit",
+          {
+            sha: commit.sha,
+            message: commit.commit.message,
+            repoName: repoName,
+            repoFullName: `${owner}/${repoName}`,
+            repoUrl: commit.html_url.split('/commit/')[0],
+            commitUrl: commit.html_url,
+            author: githubLogin,
+            createdAt: commit.commit.author.date,
+          },
+          podId
+        );
+        if (activity) {
+          results.activitiesCreated++;
+        }
+      }
+    }
+
+    // 4. Fetch PRs
+    const prs = await fetchWeeklyPRs(accessToken, owner, repoName, syncWindow);
+    results.prsFetched = prs.length;
+
+    for (const pr of prs) {
+      const githubLogin = pr.user?.login;
+      if (!githubLogin) continue;
+
+      const member = pod.members.find(m =>
+        m.user.githubUsername === githubLogin ||
+        (m.user.name === githubLogin && !m.user.githubUsername)
+      );
+      if (member) {
+        // PR Opened
+        if (new Date(pr.created_at) >= syncWindow) {
+          const activity = await storeActivity(
+            member.userId,
+            "pr_opened",
+            {
+              prNumber: pr.number,
+              title: pr.title,
+              repoName: repoName,
+              repoFullName: `${owner}/${repoName}`,
+              prUrl: pr.html_url,
+              createdAt: pr.created_at,
+            },
+            podId
+          );
+          if (activity) results.activitiesCreated++;
+        }
+
+        // PR Merged
+        if (pr.merged_at && new Date(pr.merged_at) >= syncWindow) {
+          const activity = await storeActivity(
+            member.userId,
+            "pr_merged",
+            {
+              prNumber: pr.number,
+              title: pr.title,
+              repoName: repoName,
+              repoFullName: `${owner}/${repoName}`,
+              prUrl: pr.html_url,
+              createdAt: pr.merged_at,
+            },
+            podId
+          );
+          if (activity) results.activitiesCreated++;
+        }
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error(`Error syncing repo activity for ${owner}/${repoName}:`, error);
+    results.errors.push(error.message);
+    return results;
+  }
+};

@@ -70,8 +70,9 @@ router.get("/callback", async (req, res) => {
             where: { id: userId },
             data: {
               githubId,
+              githubUsername: login,
               githubToken: accessToken,
-              name: login // Update name if desired
+              name: user.name || login // Only update name if it was empty
             }
           });
         }
@@ -89,6 +90,7 @@ router.get("/callback", async (req, res) => {
         user = await prisma.user.create({
           data: {
             githubId,
+            githubUsername: login,
             name: login,
             githubToken: accessToken,
           },
@@ -97,7 +99,10 @@ router.get("/callback", async (req, res) => {
         // Update token if user already exists
         user = await prisma.user.update({
           where: { githubId },
-          data: { githubToken: accessToken },
+          data: {
+            githubToken: accessToken,
+            githubUsername: login // Ensure username is updated
+          },
         });
       }
     }

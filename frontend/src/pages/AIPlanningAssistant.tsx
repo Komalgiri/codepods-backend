@@ -13,7 +13,10 @@ interface ChatMessage {
 const AIPlanningAssistant = () => {
     const { id: podId } = useParams<{ id: string }>();
     const [roadmap, setRoadmap] = useState<RoadmapStage[]>([]);
+    const [teamAllocation, setTeamAllocation] = useState<any[]>([]);
+    const [projectStage, setProjectStage] = useState<string>("Analyzing...");
     const [stats, setStats] = useState<{ confidence: number; duration: string; efficiency: string } | null>(null);
+    const [isRegenerating, setIsRegenerating] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             id: 1,
@@ -27,26 +30,46 @@ const AIPlanningAssistant = () => {
     const [sending, setSending] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const fetchPlan = async () => {
-            if (!podId) return;
-            try {
-                const response = await aiService.getPodPlan(podId);
-                setRoadmap(response.roadmap);
-                setStats({
-                    confidence: response.confidence,
-                    duration: response.duration,
-                    efficiency: response.efficiency
-                });
-            } catch (error) {
-                console.error("Failed to fetch AI plan", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchPlan = async (isRegen = false) => {
+        if (!podId) return;
+        if (isRegen) setIsRegenerating(true);
+        else setLoading(true);
 
+        try {
+            const response = await aiService.getPodPlan(podId);
+            setRoadmap(response.roadmap);
+            setTeamAllocation(response.members || []);
+            setProjectStage(response.stage || "Development");
+            setStats({
+                confidence: response.confidence,
+                duration: response.duration,
+                efficiency: response.efficiency
+            });
+
+            if (isRegen) {
+                const aiMsg: ChatMessage = {
+                    id: Date.now(),
+                    sender: 'assistant',
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    content: "Roadmap has been recalculated based on your latest activity. I've re-allocated resources to optimize for the next sprint."
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch AI plan", error);
+        } finally {
+            setLoading(false);
+            setIsRegenerating(false);
+        }
+    };
+
+    useEffect(() => {
         fetchPlan();
     }, [podId]);
+
+    const handleRegenerateNodes = () => {
+        fetchPlan(true);
+    };
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -91,7 +114,12 @@ const AIPlanningAssistant = () => {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-text-primary mb-1">Strategic Roadmap</h1>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h1 className="text-3xl font-bold text-text-primary">Strategic Roadmap</h1>
+                            <span className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold rounded-full uppercase tracking-widest leading-none mt-1">
+                                {projectStage}
+                            </span>
+                        </div>
                         <p className="text-text-secondary text-sm">AI-generated path from concept to deployment. Optimized for your stack.</p>
                     </div>
 
@@ -119,8 +147,12 @@ const AIPlanningAssistant = () => {
                                 <svg className="w-5 h-5 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="8" x2="12" y2="21"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg>
                                 <h3>Development Timeline</h3>
                             </div>
-                            <button className="text-xs font-bold text-cyan-500 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors">
-                                Regenerate Nodes
+                            <button
+                                onClick={handleRegenerateNodes}
+                                disabled={isRegenerating}
+                                className="text-xs font-bold text-cyan-500 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
+                            >
+                                {isRegenerating ? 'Optimizing...' : 'Regenerate Nodes'}
                             </button>
                         </div>
 
@@ -145,19 +177,32 @@ const AIPlanningAssistant = () => {
                                     {stage.tasks.length > 0 && (
                                         <div className="grid grid-cols-2 gap-4 mt-4">
                                             {stage.tasks.map((task, idx) => (
-                                                <div key={idx} className="bg-background/30 border border-background-border rounded-xl p-3 flex items-center justify-between">
-                                                    <span className="text-sm text-text-primary font-medium">{task.name}</span>
-                                                    {task.status === 'done' && (
-                                                        <div className="w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500">
-                                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                <div key={idx} className="bg-background/30 border border-background-border rounded-xl p-3 flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-sm text-text-primary font-medium">{task.name}</span>
+                                                        {task.status === 'done' && (
+                                                            <div className="w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500">
+                                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {task.assignee && (
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <img
+                                                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.assignee}`}
+                                                                alt={task.assignee}
+                                                                className="w-4 h-4 rounded-full bg-background-surface border border-background-border"
+                                                            />
+                                                            <span className="text-[10px] font-bold text-text-secondary">{task.assignee}</span>
                                                         </div>
                                                     )}
+
                                                     {task.status === 'progress' && (
-                                                        <div className="w-24 h-1.5 bg-background-border rounded-full overflow-hidden">
+                                                        <div className="w-full h-1 bg-background-border rounded-full overflow-hidden mt-1">
                                                             <div className="h-full bg-cyan-500" style={{ width: `${task.progress}%` }}></div>
                                                         </div>
                                                     )}
-                                                    {task.status === 'pending' && <span className="text-xs text-text-secondary font-bold">Pending</span>}
                                                 </div>
                                             ))}
                                         </div>
@@ -173,9 +218,13 @@ const AIPlanningAssistant = () => {
                             <div className="relative z-10">
                                 <h3 className="text-lg font-bold text-text-primary mb-2">Ready to evolve?</h3>
                                 <p className="text-xs text-text-secondary mb-6">Let the AI scan your repository and optimize the next sprint backlog.</p>
-                                <button className="w-full py-3 bg-text-primary text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-colors">
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-                                    Generate AI Plan
+                                <button
+                                    onClick={handleRegenerateNodes}
+                                    disabled={isRegenerating}
+                                    className="w-full py-3 bg-text-primary text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-colors disabled:opacity-50"
+                                >
+                                    <svg className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                                    {isRegenerating ? 'Analyzing...' : 'Generate AI Plan'}
                                 </button>
                             </div>
                         </div>
@@ -187,19 +236,25 @@ const AIPlanningAssistant = () => {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="bg-background/50 border border-background-border rounded-xl p-3">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">LEAD BACKEND</span>
-                                        <svg className="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" className="w-8 h-8 rounded-full bg-white" />
-                                        <div>
-                                            <div className="font-bold text-sm text-text-primary">Alex Rivera</div>
-                                            <div className="text-[10px] text-cyan-500">98% Match for Rust</div>
+                                {teamAllocation.length > 0 ? teamAllocation.map((member) => (
+                                    <div key={member.id} className="bg-background/50 border border-background-border rounded-xl p-3">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{member.role}</span>
+                                            <svg className="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} className="w-8 h-8 rounded-full border border-background-border bg-background-surface" />
+                                            <div>
+                                                <div className="font-bold text-sm text-text-primary">{member.name}</div>
+                                                <div className="text-[10px] text-cyan-500">{member.match}% AI Match</div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )) : (
+                                    <div className="text-center py-4 text-xs text-text-secondary italic">
+                                        No members found for allocation.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -1,7 +1,7 @@
 import prisma from "../utils/prismaClient.js";
 import {
   fetchUserRepos,
-  fetchWeeklyCommits,
+  fetchRepoCommits,
   syncGitHubActivity,
 } from "../services/githubService.js";
 
@@ -90,7 +90,7 @@ export const getCommits = async (req, res) => {
     }
 
     // Fetch commits from GitHub
-    const commits = await fetchWeeklyCommits(user.githubToken, owner, repo, sinceDate);
+    const commits = await fetchRepoCommits(user.githubToken, owner, repo, sinceDate);
 
     // Format response
     const formattedCommits = commits.map((commit) => ({
@@ -115,7 +115,7 @@ export const getCommits = async (req, res) => {
       count: formattedCommits.length,
       owner,
       repo,
-      since: sinceDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      since: sinceDate || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
     });
   } catch (error) {
     console.error("Error fetching commits:", error);

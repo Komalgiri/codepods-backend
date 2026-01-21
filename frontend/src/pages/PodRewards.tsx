@@ -38,7 +38,10 @@ const PodRewards = () => {
             'committer': '🔨',
             'super-committer': '🔥',
             'mentor': '🎓',
-            'bug-fixer': '🐛'
+            'bug-fixer': '🐛',
+            'pr-open': '📑',
+            'milestone': '🎯',
+            'reward': '💎'
         };
         return map[badge] || '🏅';
     };
@@ -88,6 +91,39 @@ const PodRewards = () => {
                     </div>
                 </div>
 
+                {/* How to Earn XP */}
+                <div className="bg-background-surface/50 border border-background-border rounded-xl p-4 mb-8 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">💡</div>
+                        <div>
+                            <h4 className="text-sm font-bold text-text-primary">XP Point System</h4>
+                            <p className="text-[10px] text-text-secondary uppercase tracking-widest font-bold opacity-60">How to level up your pod rank</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                            <span className="text-sm">🔨</span>
+                            <span className="text-xs font-bold text-text-primary">Commit</span>
+                            <span className="text-xs font-bold text-primary">+10 XP</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                            <span className="text-sm">📑</span>
+                            <span className="text-xs font-bold text-text-primary">Open PR</span>
+                            <span className="text-xs font-bold text-blue-500">+25 XP</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                            <span className="text-sm">🚀</span>
+                            <span className="text-xs font-bold text-text-primary">Merge PR</span>
+                            <span className="text-xs font-bold text-green-500">+50 XP</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                            <span className="text-sm">✅</span>
+                            <span className="text-xs font-bold text-text-primary">Task Done</span>
+                            <span className="text-xs font-bold text-yellow-500">+100 XP</span>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Leaderboard Table */}
                 <div className="bg-background-surface border border-background-border rounded-2xl overflow-hidden mb-8">
                     <div className="p-6 border-b border-background-border flex justify-between items-center">
@@ -104,34 +140,70 @@ const PodRewards = () => {
                         </thead>
                         <tbody className="divide-y divide-background-border">
                             {leaderboard.map((member, index) => (
-                                <tr key={member.id} className="hover:bg-background/30 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
-                                            ${index + 1 === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
-                                                index + 1 === 2 ? 'bg-gray-400/20 text-gray-400 border border-gray-400/50' :
+                                <tr key={member.id} className={`hover:bg-background/30 transition-colors group ${index === 0 ? 'bg-primary/5' : ''}`}>
+                                    <td className="px-6 py-4 text-center">
+                                        {index === 0 ? (
+                                            <div className="relative inline-block">
+                                                <div className="w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 flex items-center justify-center font-bold text-sm">
+                                                    1
+                                                </div>
+                                                <span className="absolute -top-3 -right-3 text-lg animate-bounce duration-1000">👑</span>
+                                            </div>
+                                        ) : (
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
+                                                ${index + 1 === 2 ? 'bg-gray-400/20 text-gray-400 border border-gray-400/50' :
                                                     index + 1 === 3 ? 'bg-orange-700/20 text-orange-700 border border-orange-700/50' :
                                                         'text-text-secondary'}`}>
-                                            {index + 1}
-                                        </div>
+                                                {index + 1}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} alt={member.name} className="w-10 h-10 rounded-full border border-background-border" />
+                                            <div className="relative">
+                                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} alt={member.name} className="w-10 h-10 rounded-full border border-background-border shadow-sm" />
+                                                {member.githubUsername && (
+                                                    <div className="absolute -bottom-1 -right-1 bg-background-surface border border-background-border rounded-full p-0.5">
+                                                        <svg className="w-3 h-3 text-primary" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.041-1.416-4.041-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" /></svg>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div>
-                                                <div className="font-bold text-text-primary">{member.name}</div>
-                                                <div className="text-xs text-text-secondary capitalize">{member.role}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-text-primary">{member.name}</span>
+                                                    {index === 0 && <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded-full border border-yellow-500/20 font-bold uppercase tracking-tight">Weekly Champ</span>}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-text-secondary">
+                                                    <span className="capitalize">{member.role}</span>
+                                                    {member.githubUsername ? (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="font-mono text-[10px] opacity-70">@{member.githubUsername}</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="text-red-500/70 text-[10px] italic">Not verified</span>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-bold text-text-primary">{member.level}</span>
+                                            <span className="font-bold text-text-primary">Lvl {member.level}</span>
                                             <div className="w-20 h-1.5 bg-background-border rounded-full overflow-hidden">
-                                                <div className="h-full bg-primary" style={{ width: `${(member.totalPoints % 1000) / 10}%` }}></div>
+                                                <div className="h-full bg-primary shadow-[0_0_8px_rgba(88,166,154,0.4)]" style={{ width: `${(member.totalPoints % 500) / 5}%` }}></div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 font-bold text-primary">{member.totalPoints.toLocaleString()}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col items-end">
+                                            <span className="font-bold text-primary">{member.totalPoints.toLocaleString()}</span>
+                                            <span className="text-[10px] text-text-secondary uppercase tracking-widest font-bold opacity-60">Total XP</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

@@ -1,171 +1,165 @@
 
 
-
-// Mock Data
-const ACTIVITY_LOGS = [
-    {
-        id: '1',
-        message: 'feat: implement auth middleware for API routes',
-        hash: 'a7c12d9',
-        author: 'alex_dev',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-        time: 'committed 2 hours ago',
-        status: 'PASSED',
-        statusColor: 'text-green-500 bg-green-500/10 border-green-500/20'
-    },
-    {
-        id: '2',
-        message: 'fix: resolve hydration mismatch on dashboard',
-        hash: 'b4e22f1',
-        author: 'sarah_codes',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-        time: 'committed 5 hours ago',
-        status: 'PASSED',
-        statusColor: 'text-green-500 bg-green-500/10 border-green-500/20'
-    },
-    {
-        id: '3',
-        message: 'docs: update readme with setup instructions',
-        hash: 'f9d1102',
-        author: 'jordan_tech',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan',
-        time: 'committed yesterday',
-        status: 'SKIPPED',
-        statusColor: 'text-blue-500 bg-blue-500/10 border-blue-500/20'
-    },
-    {
-        id: '4',
-        message: 'refactor: optimize database query performance',
-        hash: 'cc4200a',
-        author: 'alex_dev',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-        time: 'committed 2 days ago',
-        status: 'FAILED',
-        statusColor: 'text-red-500 bg-red-500/10 border-red-500/20'
-    }
-];
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { podService } from '../services/podService';
 
 const GitHubActivity = () => {
+    const { id: podId } = useParams<{ id: string }>();
+    const [activities, setActivities] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [pod, setPod] = useState<any>(null);
+
+    const fetchActivities = async () => {
+        if (!podId) return;
+        try {
+            const [activitiesRes, podRes] = await Promise.all([
+                podService.getPodActivities(podId),
+                podService.getPod(podId)
+            ]);
+            setActivities(activitiesRes.activities);
+            setPod(podRes.pod);
+        } catch (error) {
+            console.error("Failed to fetch activities", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchActivities();
+    }, [podId]);
+
+    const handleSync = async () => {
+        if (!podId) return;
+        setIsSyncing(true);
+        try {
+            await podService.syncPodActivity(podId);
+            await fetchActivities();
+        } catch (error) {
+            console.error("Sync failed", error);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const getStatusInfo = (type: string) => {
+        switch (type) {
+            case 'commit':
+                return { label: 'COMMIT', color: 'text-green-500 bg-green-500/10 border-green-500/20' };
+            case 'pr_opened':
+                return { label: 'PR OPEN', color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' };
+            case 'pr_merged':
+                return { label: 'PR MERGED', color: 'text-purple-500 bg-purple-500/10 border-purple-500/20' };
+            case 'repo_created':
+                return { label: 'REPO CREATE', color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20' };
+            default:
+                return { label: 'ACTIVITY', color: 'text-gray-500 bg-gray-500/10 border-gray-500/20' };
+        }
+    };
+
+    if (isLoading) return (
+        <div className="h-full flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+
+    const stats = {
+        totalCommits: activities.filter(a => a.type === 'commit').length,
+        activeContributors: new Set(activities.map(a => a.userId)).size,
+        openPRs: activities.filter(a => a.type === 'pr_opened').length - activities.filter(a => a.type === 'pr_merged').length
+    };
+
     return (
-        <div className="h-full flex gap-6 overflow-hidden">
+        <div className="h-full flex gap-6 overflow-hidden animate-in fade-in duration-500">
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <div className="flex items-center gap-2 text-xs text-text-secondary mb-1">
                             <span>Pods</span>
                             <span>/</span>
-                            <span>Project Alpha</span>
+                            <span>{pod?.name || 'Project'}</span>
                             <span>/</span>
                             <span className="text-text-primary">GitHub Activity</span>
                         </div>
                         <h1 className="text-3xl font-bold text-text-primary mb-2">Project Activity</h1>
                         <div className="flex items-center gap-3">
                             <span className="text-xs text-text-secondary bg-background-surface border border-background-border px-2 py-1 rounded font-mono">
-                                github.com/codepods/project-alpha
+                                {pod?.repoOwner}/{pod?.repoName}
                             </span>
                             <span className="text-[10px] font-bold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                Live on Vercel
+                                Integration Active
                             </span>
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-background-surface border border-background-border rounded-lg text-sm font-bold text-text-primary hover:bg-background-border/20 transition-colors">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>
-                            Sync Now
+                        <button
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className="flex items-center gap-2 px-4 py-2 bg-background-surface border border-background-border rounded-lg text-sm font-bold text-text-primary hover:bg-background-border/20 transition-colors disabled:opacity-50"
+                        >
+                            <svg className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>
+                            {isSyncing ? 'Syncing...' : 'Sync Now'}
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-background text-text-primary border border-background-border rounded-lg text-sm font-bold hover:bg-background-surface transition-colors">
+                        <a
+                            href={`https://github.com/${pod?.repoOwner}/${pod?.repoName}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 bg-background text-text-primary border border-background-border rounded-lg text-sm font-bold hover:bg-background-surface transition-colors"
+                        >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                             View on GitHub
-                        </button>
+                        </a>
                     </div>
                 </div>
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-primary/50 transition-colors">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Total Commits</span>
-                            <svg className="w-5 h-5 text-background-border" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            <svg className="w-5 h-5 text-text-secondary opacity-30 group-hover:text-primary group-hover:opacity-100 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         </div>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-white">1,284</span>
-                            <span className="text-xs font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">+12.4%</span>
+                            <span className="text-3xl font-bold text-white">{stats.totalCommits}</span>
                         </div>
                     </div>
-                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
+                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-ai-start/50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Weekly Commits</span>
+                            <svg className="w-5 h-5 text-text-secondary opacity-30 group-hover:text-ai-start group-hover:opacity-100 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M18 20V4M6 20v-4" /></svg>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-bold text-white">
+                                {activities.filter(a => a.type === 'commit' && new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-cyan-500/50 transition-colors">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Active Contributors</span>
-                            <svg className="w-5 h-5 text-background-border" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            <svg className="w-5 h-5 text-text-secondary opacity-30 group-hover:text-cyan-500 group-hover:opacity-100 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         </div>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-white">12</span>
-                            <span className="text-xs font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">+2</span>
+                            <span className="text-3xl font-bold text-white">
+                                {new Set(activities.filter(a => new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).map(a => a.userId)).size}
+                            </span>
+                            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-50 ml-1">this week</span>
                         </div>
                     </div>
-                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
+                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Open Pull Requests</span>
-                            <svg className="w-5 h-5 text-background-border" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Weekly PRs</span>
+                            <svg className="w-5 h-5 text-text-secondary opacity-30 group-hover:text-blue-500 group-hover:opacity-100 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 14l-4 4-4-4M11 18V4" /></svg>
                         </div>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-white">5</span>
-                            <span className="text-xs font-bold text-text-secondary bg-background-border/50 px-1.5 py-0.5 rounded">Stable</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Chart Mock */}
-                <div className="bg-background-surface border border-background-border rounded-2xl p-6 mb-8 relative overflow-hidden">
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-2 font-bold text-text-primary">
-                            <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                            <h3>Weekly Activity Frequency</h3>
-                        </div>
-                        <span className="text-[10px] font-bold text-cyan-500 bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20">7D REAL-TIME</span>
-                    </div>
-
-                    {/* SVG Chart */}
-                    <div className="w-full h-48 relative">
-                        {/* Grid Lines */}
-                        <div className="absolute inset-0 flex flex-col justify-between text-xs text-text-secondary opacity-20">
-                            <div className="border-b border-white w-full h-full"></div>
-                        </div>
-
-                        {/* The Path */}
-                        <svg className="w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="none">
-                            <path
-                                d="M0,180 L100,160 L200,170 L300,140 L400,110 L500,130 L600,100 L700,90 L800,110 V200 H0 Z"
-                                fill="url(#gradient)"
-                                fillOpacity="0.2"
-                            />
-                            <path
-                                d="M0,180 L100,160 L200,170 L300,140 L400,110 L500,130 L600,100 L700,90 L800,110"
-                                fill="none"
-                                stroke="#4ADE80"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                            <defs>
-                                <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#4ADE80" stopOpacity="0.8" />
-                                    <stop offset="100%" stopColor="#4ADE80" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
-
-                        {/* X-Axis Labels */}
-                        <div className="flex justify-between text-[10px] font-bold text-text-secondary uppercase mt-4 px-2">
-                            <span>Mon</span>
-                            <span>Tue</span>
-                            <span>Wed</span>
-                            <span>Thu</span>
-                            <span>Fri</span>
-                            <span>Sat</span>
-                            <span>Sun</span>
+                            <span className="text-3xl font-bold text-white">
+                                {activities.filter(a => (a.type === 'pr_opened' || a.type === 'pr_merged') && new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -174,114 +168,118 @@ const GitHubActivity = () => {
                 <div>
                     <div className="flex items-center gap-2 mb-4">
                         <h3 className="font-bold text-text-primary text-lg">Latest Repository Activity</h3>
-                        <span className="text-xs text-text-secondary">(Showing 24 of 1,284)</span>
+                        <span className="text-xs text-text-secondary">(Showing {activities.length} entries)</span>
                     </div>
 
                     <div className="space-y-3">
-                        {ACTIVITY_LOGS.map(log => (
-                            <div key={log.id} className="bg-background-surface border border-background-border rounded-lg p-4 flex items-center justify-between hover:bg-background/50 transition-colors group">
-                                <div className="flex items-center gap-4">
-                                    <img src={log.avatar} alt={log.author} className="w-10 h-10 rounded-full border border-background-border" />
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-bold text-text-primary">{log.message}</span>
-                                            <span className="text-xs text-text-secondary bg-background-border/30 px-1.5 py-0.5 rounded font-mono border border-background-border/50">{log.hash}</span>
+                        {activities.length === 0 ? (
+                            <div className="bg-background-surface border border-background-border border-dashed rounded-xl py-12 flex flex-col items-center justify-center text-center px-6">
+                                <svg className="w-12 h-12 text-text-secondary mb-4 opacity-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="M12 2v20M2 12h20" /></svg>
+                                <p className="text-text-secondary mb-2 font-medium">No activity synced yet.</p>
+                                <button
+                                    onClick={handleSync}
+                                    className="text-primary text-sm font-bold hover:underline"
+                                >
+                                    Try Syncing Now
+                                </button>
+                            </div>
+                        ) : (
+                            activities.map(activity => {
+                                const status = getStatusInfo(activity.type);
+                                return (
+                                    <div key={activity.id} className="bg-background-surface border border-background-border rounded-lg p-4 flex items-center justify-between hover:bg-background/50 transition-colors group">
+                                        <div className="flex items-center gap-4">
+                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.user?.name}`} alt={activity.user?.name} className="w-10 h-10 rounded-full border border-background-border bg-background" />
+                                            <div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm font-bold text-text-primary">
+                                                        {activity.type === 'commit' ? activity.meta?.message :
+                                                            activity.type === 'pr_opened' ? `Opened PR #${activity.meta?.prNumber}: ${activity.meta?.title}` :
+                                                                activity.type === 'pr_merged' ? `Merged PR #${activity.meta?.prNumber}: ${activity.meta?.title}` :
+                                                                    activity.type === 'repo_created' ? `Created repo ${activity.meta?.repoName}` :
+                                                                        activity.type}
+                                                    </span>
+                                                    {activity.meta?.sha && (
+                                                        <span className="text-[10px] text-text-secondary bg-background-border/30 px-1.5 py-0.5 rounded font-mono border border-background-border/50">{activity.meta.sha.substring(0, 7)}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-text-secondary mt-0.5 font-medium">
+                                                    <span className="text-text-primary font-bold">{activity.user?.name}</span>
+                                                    <span>•</span>
+                                                    <span>{new Date(activity.createdAt).toLocaleString()}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs text-text-secondary mt-0.5">
-                                            <span className="font-medium text-text-primary">{log.author}</span>
-                                            <span>•</span>
-                                            <span>{log.time}</span>
+
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded border ${status.color}`}>
+                                                {status.label}
+                                            </span>
+                                            {activity.meta?.prUrl || activity.meta?.commitUrl ? (
+                                                <a
+                                                    href={activity.meta.prUrl || activity.meta.commitUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-text-secondary hover:text-text-primary transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                                </a>
+                                            ) : null}
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-[10px] font-bold px-2 py-1 rounded border ${log.statusColor}`}>
-                                        {log.status}
-                                    </span>
-                                    <button className="text-text-secondary hover:text-text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })
+                        )}
                     </div>
-                    <button className="w-full text-center text-xs font-bold text-text-secondary hover:text-text-primary mt-6 flex items-center justify-center gap-1">
-                        View all commits
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </button>
                 </div>
             </div>
 
             {/* Right Sidebar */}
-            <div className="w-72 flex flex-col gap-6 shrink-0">
-                {/* Repo Stats */}
-                <div className="bg-background-surface border border-background-border rounded-xl p-6">
-                    <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-4">REPOSITORY STATS</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-background/50 border border-background-border rounded-lg p-3 text-center">
-                            <div className="flex items-center justify-center gap-1 text-xs text-text-secondary mb-1">
-                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                STARS
-                            </div>
-                            <div className="text-2xl font-bold text-white">2.4k</div>
-                        </div>
-                        <div className="bg-background/50 border border-background-border rounded-lg p-3 text-center">
-                            <div className="flex items-center justify-center gap-1 text-xs text-text-secondary mb-1">
-                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                                FORKS
-                            </div>
-                            <div className="text-2xl font-bold text-white">182</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Languages */}
-                <div className="bg-background-surface border border-background-border rounded-xl p-6">
-                    <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-4">LANGUAGES</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <div className="flex justify-between text-xs mb-1.5">
-                                <span className="font-bold text-text-primary">TypeScript</span>
-                                <span className="text-text-secondary">74.9%</span>
-                            </div>
-                            <div className="h-1.5 bg-background-border rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 w-[74.9%]"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex justify-between text-xs mb-1.5">
-                                <span className="font-bold text-text-primary">Tailwind CSS</span>
-                                <span className="text-text-secondary">18.5%</span>
-                            </div>
-                            <div className="h-1.5 bg-background-border rounded-full overflow-hidden">
-                                <div className="h-full bg-cyan-400 w-[18.5%]"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex justify-between text-xs mb-1.5">
-                                <span className="font-bold text-text-primary">Other</span>
-                                <span className="text-text-secondary">7.5%</span>
-                            </div>
-                            <div className="h-1.5 bg-background-border rounded-full overflow-hidden">
-                                <div className="h-full bg-gray-500 w-[7.5%]"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Integration Health */}
+            <div className="w-72 flex flex-col gap-6 shrink-0 h-full overflow-y-auto pr-2 custom-scrollbar">
+                {/* Integration Info */}
                 <div className="bg-background-surface border border-background-border rounded-xl p-6">
                     <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-4">INTEGRATION HEALTH</h3>
-                    <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4 text-center">
+                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-4 text-center">
                         <div className="flex items-center justify-center gap-2 mb-2">
-                            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm font-bold text-white">Webhook Active</span>
+                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                            <span className="text-sm font-bold text-white">Manual Sync</span>
                         </div>
-                        <p className="text-[10px] text-cyan-500/80 mb-4">Receiving events from GitHub</p>
-                        <button className="w-full py-1.5 bg-background-surface border border-background-border hover:bg-background-border transition-colors text-xs font-bold text-cyan-500 rounded">
-                            Test Payload
+                        <p className="text-[10px] text-text-secondary mb-4 leading-relaxed">
+                            Currently using manual polling sync. Webhooks coming soon for real-time updates.
+                        </p>
+                        <button
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className="w-full py-1.5 bg-background-surface border border-background-border hover:bg-background-border transition-colors text-xs font-bold text-primary rounded"
+                        >
+                            {isSyncing ? 'Processing...' : 'Sync Activity'}
                         </button>
+                    </div>
+                </div>
+
+                {/* Team Impact */}
+                <div className="bg-background-surface border border-background-border rounded-xl p-6">
+                    <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-4">TEAM IMPACT</h3>
+                    <div className="space-y-4">
+                        {Array.from(new Set(activities.map(a => a.userId))).slice(0, 5).map(uId => {
+                            const userActivities = activities.filter(a => a.userId === uId);
+                            const userName = userActivities[0]?.user?.name || 'Contributor';
+                            const commitCount = userActivities.filter(a => a.type === 'commit').length;
+                            return (
+                                <div key={uId}>
+                                    <div className="flex justify-between text-xs mb-1.5 font-bold">
+                                        <span className="text-text-primary">{userName}</span>
+                                        <span className="text-text-secondary">{commitCount} commits</span>
+                                    </div>
+                                    <div className="h-1 bg-background-border rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary"
+                                            style={{ width: `${Math.min((commitCount / (stats.totalCommits || 1)) * 100, 100)}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

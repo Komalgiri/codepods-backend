@@ -126,3 +126,56 @@ export const getProfile = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// GET /users/search?q=... - Search users by name or email
+export const searchUsers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.json({ users: [] });
+
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      take: 10,
+    });
+
+    res.json({ users });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+// PATCH /users/profile - Update user profile
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, githubUsername } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name && { name }),
+        ...(githubUsername && { githubUsername }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        githubUsername: true,
+        githubId: true,
+      }
+    });
+
+    res.json({ message: "Profile updated successfully", user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

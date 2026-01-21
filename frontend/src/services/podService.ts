@@ -15,6 +15,7 @@ export interface PodMember {
         id: string;
         name: string;
         email: string;
+        githubUsername?: string;
     };
 }
 
@@ -51,11 +52,13 @@ export interface LeaderboardMember {
     totalPoints: number;
     level: number;
     badges: any[];
+    githubUsername?: string;
 }
 
 export interface PodStats {
     commits: { value: string; trend: string; trendUp: boolean; unit: string };
     prs: { value: string; trend: string; trendUp: boolean; unit: string };
+    weeklyCommits?: { value: string; unit: string };
     uptime: { value: string; unit: string; trend: string; trendUp: boolean };
     health: number;
 }
@@ -132,6 +135,66 @@ export const podService = {
         return apiRequest<{ message: string; task: Task }>(`tasks/${taskId}`, {
             method: 'PATCH',
             body: { status },
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    updatePod: async (podId: string, data: { name?: string; description?: string; repoOwner?: string; repoName?: string }): Promise<{ message: string; pod: Pod }> => {
+        return apiRequest<{ message: string; pod: Pod }>(`pods/${podId}`, {
+            method: 'PATCH',
+            body: data,
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    addMember: async (podId: string, userId: string, role: string = 'member'): Promise<{ message: string; member: PodMember }> => {
+        return apiRequest<{ message: string; member: PodMember }>(`pods/${podId}/members`, {
+            method: 'POST',
+            body: { userId, role },
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    searchUsers: async (query: string): Promise<{ users: { id: string; name: string; email: string }[] }> => {
+        return apiRequest<{ users: { id: string; name: string; email: string }[] }>(`users/search?q=${query}`, {
+            method: 'GET',
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    getGitHubRepos: async (): Promise<{ repos: { id: string; name: string; fullName: string; owner: { login: string } }[] }> => {
+        return apiRequest<{ repos: any[] }>('github/repos', {
+            method: 'GET',
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    getPodActivities: async (podId: string): Promise<{ activities: any[] }> => {
+        return apiRequest<{ activities: any[] }>(`pods/${podId}/activities`, {
+            method: 'GET',
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    updateMemberRole: async (podId: string, memberId: string, role: string): Promise<{ message: string; member: PodMember }> => {
+        return apiRequest<{ message: string; member: PodMember }>(`pods/${podId}/members/${memberId}`, {
+            method: 'PATCH',
+            body: { role },
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    syncPodActivity: async (podId: string): Promise<{ message: string; results: any }> => {
+        return apiRequest<{ message: string; results: any }>(`pods/${podId}/sync`, {
+            method: 'POST',
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    updateProfile: async (data: { name?: string; githubUsername?: string }): Promise<{ message: string; user: any }> => {
+        return apiRequest<{ message: string; user: any }>('users/profile', {
+            method: 'PATCH',
+            body: data,
             token: localStorage.getItem('token'),
         });
     }

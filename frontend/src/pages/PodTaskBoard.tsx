@@ -21,6 +21,7 @@ const PodTaskBoard = () => {
     const [loading, setLoading] = useState(true);
     const [aiSuggestions, setAiSuggestions] = useState<TaskSuggestion[]>([]);
     const [isAILoading, setIsAILoading] = useState(false);
+    const [currentRoadmapStage, setCurrentRoadmapStage] = useState<any>(null);
 
     useEffect(() => {
         fetchTasks();
@@ -30,10 +31,17 @@ const PodTaskBoard = () => {
         if (!podId) return;
         setLoading(true);
         try {
-            const response = await podService.getPodTasks(podId);
-            setTasks(response.tasks);
+            const [taskResponse, aiPlanResponse] = await Promise.all([
+                podService.getPodTasks(podId),
+                aiService.getPodPlan(podId)
+            ]);
+            setTasks(taskResponse.tasks);
+
+            // Find current active stage
+            const activeStage = aiPlanResponse.roadmap.find(s => s.status === 'IN PROGRESS') || aiPlanResponse.roadmap[0];
+            setCurrentRoadmapStage(activeStage);
         } catch (error) {
-            console.error("Failed to fetch tasks", error);
+            console.error("Failed to fetch tasks or plan", error);
         } finally {
             setLoading(false);
         }
@@ -134,7 +142,15 @@ const PodTaskBoard = () => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-text-primary mb-1">Project Board</h1>
-                        <p className="text-text-secondary text-sm">Collaborative real-time task management for the Core Team.</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-text-secondary text-sm">Collaborative real-time task management.</p>
+                            {currentRoadmapStage && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></div>
+                                    <span className="text-[10px] font-bold text-cyan-500 uppercase tracking-tight">Aligned with Week 1 Strategy</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         {/* AI Suggest Button */}
@@ -152,6 +168,34 @@ const PodTaskBoard = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Roadmap Synergy Banner */}
+                {currentRoadmapStage && (
+                    <div className="mt-6 bg-gradient-to-r from-background-surface to-background-surface/50 border border-background-border rounded-xl p-4 flex items-center justify-between group hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => window.location.hash = '#/ai-planning'}>
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Active Roadmap Phase</span>
+                                    <span className="text-[10px] text-text-secondary">• Week 1 Focus</span>
+                                </div>
+                                <h4 className="font-bold text-text-primary text-sm">{currentRoadmapStage.title}</h4>
+                                <p className="text-xs text-text-secondary opacity-70">{currentRoadmapStage.description}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right hidden sm:block">
+                                <div className="text-[10px] font-bold text-text-secondary uppercase">Week Progress</div>
+                                <div className="w-32 h-1.5 bg-background-border rounded-full mt-1 overflow-hidden">
+                                    <div className="h-full bg-cyan-500" style={{ width: '35%' }}></div>
+                                </div>
+                            </div>
+                            <svg className="w-5 h-5 text-text-secondary group-hover:text-cyan-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+                    </div>
+                )}
 
                 {/* AI Suggestions Row */}
                 {aiSuggestions.length > 0 && (
