@@ -4,7 +4,7 @@ import prisma from "../utils/prismaClient.js";
 export const createTask = async (req, res) => {
   try {
     const { id: podId } = req.params;
-    const { title, assignedTo, dueAt } = req.body;
+    const { title, description, assignedTo, dueAt } = req.body;
     const userId = req.user.id; // From authMiddleware
 
     // Check if user is a member of the pod
@@ -54,6 +54,7 @@ export const createTask = async (req, res) => {
     const task = await prisma.task.create({
       data: {
         title,
+        description: description || null,
         podId,
         assignedTo: assignedTo || null,
         dueAt: dueAt ? new Date(dueAt) : null,

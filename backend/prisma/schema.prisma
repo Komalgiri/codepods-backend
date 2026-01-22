@@ -43,7 +43,9 @@ model Pod {
   members     PodMember[]  // relation to User via join table
   tasks       Task[]       // tasks inside pod
   activities  Activity[]
-  createdAt   DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+  aiRoadmap        Json?        // Cached AI roadmap data
+  roadmapUpdatedAt DateTime?    // When the roadmap was last generated
 }
 
 model PodMember {
@@ -62,11 +64,12 @@ model PodMember {
 // Tasks
 //////////////////////////
 model Task {
-  id        String   @id @default(cuid())
-  title     String
-  status    String   @default("pending") // pending, in-progress, done
-  podId     String
-  assignedTo String?
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("pending") // pending, in-progress, done
+  podId       String
+  assignedTo  String?
 
   pod   Pod   @relation(fields: [podId], references: [id])
   user  User? @relation(fields: [assignedTo], references: [id])

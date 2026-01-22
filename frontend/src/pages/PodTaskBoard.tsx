@@ -31,14 +31,43 @@ const PodTaskBoard = () => {
         if (!podId) return;
         setLoading(true);
         try {
-            const [taskResponse, aiPlanResponse] = await Promise.all([
-                podService.getPodTasks(podId),
-                aiService.getPodPlan(podId)
-            ]);
+            // Fetch tasks (always fresh)
+            const taskResponse = await podService.getPodTasks(podId);
             setTasks(taskResponse.tasks);
 
+            // Check cache for roadmap (1 hour TTL)
+            const CACHE_KEY = `roadmap_${podId}`;
+            const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+            let aiPlanResponse;
+            const cached = localStorage.getItem(CACHE_KEY);
+
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                const isValid = Date.now() - timestamp < CACHE_TTL;
+
+                if (isValid) {
+                    console.log('[Cache] Using cached roadmap in Task Board');
+                    aiPlanResponse = data;
+                } else {
+                    // Cache expired, fetch fresh
+                    aiPlanResponse = await aiService.getPodPlan(podId);
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({
+                        data: aiPlanResponse,
+                        timestamp: Date.now()
+                    }));
+                }
+            } else {
+                // No cache, fetch fresh
+                aiPlanResponse = await aiService.getPodPlan(podId);
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    data: aiPlanResponse,
+                    timestamp: Date.now()
+                }));
+            }
+
             // Find current active stage
-            const activeStage = aiPlanResponse.roadmap.find(s => s.status === 'IN PROGRESS') || aiPlanResponse.roadmap[0];
+            const activeStage = aiPlanResponse.roadmap.find((s: any) => s.status === 'IN PROGRESS') || aiPlanResponse.roadmap[0];
             setCurrentRoadmapStage(activeStage);
         } catch (error) {
             console.error("Failed to fetch tasks or plan", error);
@@ -65,7 +94,8 @@ const PodTaskBoard = () => {
         try {
             await podService.createTask(podId, {
                 title: suggestion.title,
-                description: suggestion.description
+                description: suggestion.description,
+                assignedTo: (suggestion as any).assigneeId
             });
             // Remove from suggestions and refresh tasks
             setAiSuggestions(prev => prev.filter(s => s.title !== suggestion.title));
@@ -91,7 +121,7 @@ const PodTaskBoard = () => {
                     ? 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20'
                     : 'text-orange-500 bg-orange-500/10 border-orange-500/20'),
             title: task.title,
-            description: (task as any).description || '',
+            description: task.description || '',
             avatars: task.user ? [`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.user.name}`] : [],
             comments: 0,
             date: new Date(task.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

@@ -32,6 +32,7 @@ export interface Pod {
 export interface Task {
     id: string;
     title: string;
+    description: string | null;
     status: 'pending' | 'in-progress' | 'done';
     podId: string;
     assignedTo: string | null;
