@@ -159,3 +159,26 @@ export const syncActivity = async (req, res) => {
   }
 };
 
+// POST /api/github/analyze - Analyze profile
+export const analyzeProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { githubToken: true }
+    });
+
+    if (!user || !user.githubToken) {
+      return res.status(403).json({ error: "GitHub not linked" });
+    }
+
+    const { analyzeAndSaveProfile } = await import("../services/githubService.js");
+    const result = await analyzeAndSaveProfile(userId, user.githubToken);
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

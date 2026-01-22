@@ -29,6 +29,10 @@ model User {
   githubId       String?      @unique
   githubUsername String?      @unique
   githubToken    String?      // we'll encrypt this
+  
+  // Profile Analysis
+  techStack      String[]     @default([])
+  inferredRole   String?
 }
 
 //////////////////////////

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 
+import GitHubConnectModal from '../components/GitHubConnectModal';
+
 const Auth = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -14,6 +16,8 @@ const Auth = () => {
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [showGitHubModal, setShowGitHubModal] = useState(false);
+    const [authToken, setAuthToken] = useState<string | null>(null);
 
     useEffect(() => {
         const mode = searchParams.get('mode');
@@ -54,12 +58,25 @@ const Auth = () => {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            navigate('/dashboard');
+            if (!data.user.githubId) {
+                console.log("No GitHub ID found, showing modal");
+                setAuthToken(data.token);
+                setShowGitHubModal(true);
+            } else {
+                console.log("GitHub ID found, navigating to dashboard");
+                navigate('/dashboard');
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleConnectGitHub = () => {
+        if (!authToken) return;
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        window.location.href = `${apiUrl}/api/github/login?token=${authToken}`;
     };
 
     return (
@@ -227,7 +244,13 @@ const Auth = () => {
                     </div>
                 </div>
             </main>
-        </div>
+
+            <GitHubConnectModal
+                isOpen={showGitHubModal}
+                onClose={() => navigate('/dashboard')}
+                onConnect={handleConnectGitHub}
+            />
+        </div >
     );
 };
 

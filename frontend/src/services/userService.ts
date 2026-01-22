@@ -21,5 +21,13 @@ export const userService = {
             method: 'GET',
             token,
         });
+    },
+    updateProfile: async (data: any): Promise<any> => {
+        const token = localStorage.getItem('token');
+        return apiRequest<any>('users/profile', {
+            method: 'PATCH',
+            body: data,
+            token,
+        });
     }
 };

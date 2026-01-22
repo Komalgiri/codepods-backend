@@ -571,3 +571,68 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
     return results;
   }
 };
+
+/**
+ * Analyze user's GitHub profile to detect tech stack and infer role
+ * @param {string} userId - User ID
+ * @param {string} accessToken - GitHub access token
+ * @returns {Promise<object>} Analysis results
+ */
+export const analyzeAndSaveProfile = async (userId, accessToken) => {
+  try {
+    // 1. Fetch Repos
+    const repos = await fetchUserRepos(accessToken);
+
+    // 2. Aggregate Languages
+    const languageCounts = {};
+    repos.forEach(repo => {
+      if (repo.language) {
+        languageCounts[repo.language] = (languageCounts[repo.language] || 0) + 1;
+      }
+    });
+
+    // Sort languages by frequency
+    const sortedLanguages = Object.entries(languageCounts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([lang]) => lang);
+
+    const topStack = sortedLanguages.slice(0, 10); // Top 10 languages
+
+    // 3. Infer Role
+    const frontendLangs = ['JavaScript', 'TypeScript', 'HTML', 'CSS', 'Vue', 'Svelte', 'Dart', 'Swift', 'Kotlin', 'Objective-C'];
+    const backendLangs = ['Python', 'Java', 'Go', 'Ruby', 'PHP', 'C#', 'C++', 'Rust', 'Shell', 'C'];
+
+    let frontendScore = 0;
+    let backendScore = 0;
+
+    topStack.forEach(lang => {
+      if (frontendLangs.includes(lang)) frontendScore++;
+      if (backendLangs.includes(lang)) backendScore++;
+    });
+
+    let role = 'Fullstack Developer';
+    if (frontendScore > backendScore * 1.5) role = 'Frontend Developer';
+    else if (backendScore > frontendScore * 1.5) role = 'Backend Developer';
+
+    if (topStack.length === 0) role = 'Developer'; // Fallback
+
+    // 4. Update User
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        techStack: topStack,
+        inferredRole: role
+      }
+    });
+
+    return {
+      techStack: topStack,
+      inferredRole: role
+    };
+
+  } catch (error) {
+    console.error("Error analyzing profile:", error);
+    throw new Error("Failed to analyze GitHub profile");
+  }
+};
+
