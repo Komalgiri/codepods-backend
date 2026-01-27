@@ -15,6 +15,12 @@ export interface TeamAllocationMember {
     match: number;
 }
 
+export interface PMInsight {
+    type: 'blocker' | 'warning' | 'suggestion';
+    message: string;
+    priority: 'high' | 'medium' | 'low';
+}
+
 export interface ProjectBrain {
     summary: string;
     decisions: string[];
@@ -30,6 +36,7 @@ export interface RoadmapResponse {
     confidence: number;
     duration: string;
     efficiency: string;
+    pmInsights?: PMInsight[];
     meta?: {
         cached: boolean;
         daysSinceGeneration: number;

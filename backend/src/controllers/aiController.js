@@ -61,8 +61,12 @@ export const getPodRoadmap = async (req, res) => {
         const pod = await prisma.pod.findUnique({
             where: { id: podId },
             include: {
-                tasks: { orderBy: { createdAt: 'desc' }, take: 10 },
-                activities: { orderBy: { createdAt: 'desc' }, take: 20, include: { user: { select: { name: true } } } },
+                tasks: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 20,
+                    include: { user: { select: { name: true, inferredRole: true } } }
+                },
+                activities: { orderBy: { createdAt: 'desc' }, take: 30, include: { user: { select: { name: true, techStack: true } } } },
                 members: {
                     include: {
                         user: {
@@ -120,22 +124,24 @@ export const getPodRoadmap = async (req, res) => {
             try {
                 const brainContext = pod.projectBrain ? `Previous Strategic Context: ${JSON.stringify(pod.projectBrain)}` : "No previous strategic context recorded.";
                 const prompt = `
-                Analyze the project state and generate both:
+                Analyze the project state and act as an AI Project Manager. 
+                Generate:
                 1. A strategic 7-day roadmap.
                 2. An updated "Project Brain" summary (Long-term memory).
+                3. "PM Insights": Detect blockers (e.g. "Frontend stuck on API"), notice slow tasks, suggest reassignments based on tech stack, and identify bottlenecks.
                 
                 Project: ${pod.name}
                 Description: ${pod.description}
                 ${brainContext}
                 
                 Team Members:
-                ${pod.members.map(m => `- ${m.user.name} (ID: ${m.userId}, Role: ${m.role})`).join('\n')}
+                ${pod.members.map(m => `- ${m.user.name} (ID: ${m.userId}, Role: ${m.role}, Stack: ${m.user.techStack?.join(', ') || 'Generalist'})`).join('\n')}
                 
                 Recent Activity:
                 ${activityContext || 'No activity.'}
                 
-                Current Tasks:
-                ${pod.tasks.length > 0 ? pod.tasks.map(t => `${t.title} (${t.status})`).join(', ') : 'None'}
+                Current Tasks (Full Visibility):
+                ${pod.tasks.length > 0 ? pod.tasks.map(t => `- "${t.title}" (Status: ${t.status}, AssignedTo: ${t.user?.name || 'Unassigned'}, Stack Required: ${t.description || 'Unknown'}, CreatedAt: ${t.createdAt})`).join('\n') : 'None'}
                 
                 Return ONLY a JSON object:
                 {
@@ -147,6 +153,10 @@ export const getPodRoadmap = async (req, res) => {
                     "milestones": ["...", "..."],
                     "techStackAdjustments": "..."
                   },
+                  "pmInsights": [
+                    { "type": "blocker|warning|suggestion", "message": "...", "priority": "high|medium|low" },
+                    ...
+                  ],
                   "confidence": 0.95,
                   "duration": "7 Days",
                   "efficiency": "+18%"
@@ -163,12 +173,6 @@ export const getPodRoadmap = async (req, res) => {
                     const jsonMatch = text.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         const data = JSON.parse(jsonMatch[0]);
-                        roadmap = data.roadmap;
-                        confidence = data.confidence;
-                        duration = data.duration;
-                        efficiency = data.efficiency;
-                        stage = data.stage;
-
                         if (data.projectBrain) {
                             await prisma.pod.update({
                                 where: { id: podId },
@@ -176,17 +180,39 @@ export const getPodRoadmap = async (req, res) => {
                             });
                             pod.projectBrain = data.projectBrain;
                         }
+
+                        // Store as an object containing both the timeline steps and the PM observations
+                        roadmap = {
+                            steps: data.roadmap || [],
+                            pmInsights: data.pmInsights || []
+                        };
+
+                        confidence = data.confidence;
+                        duration = data.duration;
+                        efficiency = data.efficiency;
+                        stage = data.stage;
                     }
                 }
             } catch (e) { console.error("Gemini Roadmap Error:", e.message); }
         }
 
         if (!roadmap) {
-            roadmap = [{ id: 1, title: 'Strategic Start', description: 'Initial setup.', status: 'IN PROGRESS', tasks: [] }];
+            roadmap = {
+                steps: [{ id: 1, title: 'Strategic Start', description: 'Initial setup.', status: 'IN PROGRESS', tasks: [] }],
+                pmInsights: [{ type: "suggestion", message: "Initialize project roadmap with specific tasks.", priority: "medium" }]
+            };
         }
 
         const teamAllocation = calculateTeamAllocation(pod.members, pod.name, pod.description);
-        const result = { stage, roadmap, confidence, duration, efficiency, meta: { memberCount: pod.members.length, lastUpdated: new Date() } };
+        const result = {
+            stage,
+            roadmap: roadmap.steps || roadmap, // Fallback if still legacy format 
+            pmInsights: roadmap.pmInsights || [],
+            confidence,
+            duration,
+            efficiency,
+            meta: { memberCount: pod.members.length, lastUpdated: new Date() }
+        };
 
         await prisma.pod.update({
             where: { id: podId },

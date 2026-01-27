@@ -293,9 +293,10 @@ const getActivityPoints = (type, meta = {}) => {
  * @param {string} type - Activity type
  * @param {object} meta - Activity metadata
  * @param {string} podId - Optional pod ID
+ * @param {number} multiplier - XP multiplier (e.g. 0.5 for small pods)
  * @returns {Promise<Activity|null>} Created activity or null if duplicate
  */
-export const storeActivity = async (userId, type, meta, podId = null) => {
+export const storeActivity = async (userId, type, meta, podId = null, multiplier = 1.0) => {
   // Use the actual activity date if provided in meta, otherwise default to now
   const activityDate = meta.createdAt ? new Date(meta.createdAt) : new Date();
 
@@ -363,7 +364,12 @@ export const storeActivity = async (userId, type, meta, podId = null) => {
     }
 
     // No duplicate found, proceed to create
-    const points = getActivityPoints(type, meta);
+    let points = Math.floor(getActivityPoints(type, meta) * multiplier);
+
+    // Minimum 1 point if multiplier is applied to a non-zero value
+    if (points === 0 && getActivityPoints(type, meta) > 0 && multiplier > 0) {
+      points = 1;
+    }
 
     const activity = await prisma.activity.create({
       data: {
@@ -706,7 +712,12 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
 
     if (!pod) throw new Error("Pod not found");
 
-    // 2. Fetch weekly commits for this repo
+    // ANTI-FARMING: Pods with < 3 members get a "Low Velocity" penalty
+    const teamSize = pod.members.filter(m => m.status === 'accepted').length;
+    const isSmallPod = teamSize < 3;
+    if (isSmallPod) {
+      results.errors.push(`Team Size (${teamSize}/3): Apply 50% XP penalty to solo farming.`);
+    }
     // Note: We might not have an access token here since this is triggered by an admin
     // We can use any member's token or a generic one if configured.
     // For now, we'll try to find an admin with a token.
@@ -765,7 +776,8 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
             author: githubLogin || authorEmail,
             createdAt: commit.commit.author.date,
           },
-          podId
+          podId,
+          isSmallPod ? 0.5 : 1.0
         );
 
         if (activity) {
@@ -810,7 +822,8 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
               prUrl: pr.html_url,
               createdAt: pr.created_at,
             },
-            podId
+            podId,
+            isSmallPod ? 0.5 : 1.0
           );
           if (activity) results.activitiesCreated++;
         }
@@ -835,7 +848,8 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
               deletions: prChanges.deletions,
               changedFiles: prChanges.changedFiles
             },
-            podId
+            podId,
+            isSmallPod ? 0.5 : 1.0
           );
           if (activity) results.activitiesCreated++;
         }

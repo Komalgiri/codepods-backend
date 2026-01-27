@@ -192,8 +192,32 @@ export const getPodLeaderboard = async (req, res) => {
       })
       .sort((a, b) => b.totalPoints - a.totalPoints);
 
+    // 🛡️ ANTI-FARMING: Calculate Pod Validity
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const podActivityCount = await prisma.activity.count({
+      where: {
+        podId,
+        createdAt: { gte: thirtyDaysAgo }
+      }
+    });
+
+    const activeMemberCount = members.filter(m => m.status === 'accepted').length;
+
+    const validity = {
+      isValid: activeMemberCount >= 3 && podActivityCount >= 10,
+      reasons: [],
+      activeMemberCount,
+      podActivityCount
+    };
+
+    if (activeMemberCount < 3) validity.reasons.push("Minimum 3 members required for competitive ranking");
+    if (podActivityCount < 10) validity.reasons.push("Insufficient recent activity (need 10+ events in 30 days)");
+
     return res.status(200).json({
       leaderboard,
+      validity
     });
   } catch (error) {
     console.error("Error fetching leaderboard:", error);

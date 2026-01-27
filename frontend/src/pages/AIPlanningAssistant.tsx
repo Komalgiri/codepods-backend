@@ -13,6 +13,7 @@ const AIPlanningAssistant = () => {
     const [projectStage, setProjectStage] = useState<string>("Analyzing...");
     const [stats, setStats] = useState<{ confidence: number; duration: string; efficiency: string } | null>(null);
     const [brain, setBrain] = useState<any>(null);
+    const [pmInsights, setPmInsights] = useState<any[]>([]);
     const [meta, setMeta] = useState<{ cached: boolean; daysSinceGeneration: number; daysUntilRegeneration: number } | null>(null);
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ const AIPlanningAssistant = () => {
                         });
                         setMeta(data.meta || null);
                         setBrain(data.projectBrain || null);
+                        setPmInsights(data.pmInsights || []);
                         setLoading(false);
                         return;
                     }
@@ -74,6 +76,7 @@ const AIPlanningAssistant = () => {
             });
             setMeta(response.meta || null);
             setBrain(response.projectBrain || null);
+            setPmInsights(response.pmInsights || []);
 
         } catch (error) {
             console.error("Failed to fetch AI plan", error);
@@ -332,6 +335,47 @@ const AIPlanningAssistant = () => {
                             )}
                         </div>
                     )}
+
+                    {/* AI Manager Observations */}
+                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 text-primary font-bold">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <h3>AI Manager Observations</h3>
+                            </div>
+                            <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase">Real-time Analysis</span>
+                        </div>
+
+                        <div className="space-y-3">
+                            {pmInsights.length > 0 ? pmInsights.map((insight, idx) => (
+                                <div key={idx} className={`p-3 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-right-4 duration-500 delay-${idx * 100} ${insight.type === 'blocker' ? 'bg-red-500/5 border-red-500/20' :
+                                        insight.type === 'warning' ? 'bg-orange-500/10 border-orange-500/20' :
+                                            'bg-cyan-500/5 border-cyan-500/20'
+                                    }`}>
+                                    <div className="mt-0.5">
+                                        {insight.type === 'blocker' ? '🛑' : insight.type === 'warning' ? '⚠️' : '💡'}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${insight.type === 'blocker' || insight.type === 'warning' ? 'text-text-primary' : 'text-cyan-500'
+                                                }`}>
+                                                {insight.type}
+                                            </span>
+                                            {insight.priority === 'high' && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-text-secondary leading-normal">{insight.message}</p>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-center py-6">
+                                    <div className="text-2xl mb-2 opacity-50">✨</div>
+                                    <p className="text-[11px] text-text-secondary italic">Everything looks smooth. No blockers detected!</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex-1 overflow-y-auto">
                         <div className="flex items-center gap-2 mb-6 sticky top-0 bg-background-surface py-1">

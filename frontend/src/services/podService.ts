@@ -64,6 +64,16 @@ export interface LeaderboardMember {
     githubUsername?: string;
 }
 
+export interface PodLeaderboardResponse {
+    leaderboard: LeaderboardMember[];
+    validity: {
+        isValid: boolean;
+        reasons: string[];
+        activeMemberCount: number;
+        podActivityCount: number;
+    };
+}
+
 export interface PodStats {
     commits: { value: string; trend: string; trendUp: boolean; unit: string };
     prs: { value: string; trend: string; trendUp: boolean; unit: string };
@@ -111,8 +121,8 @@ export const podService = {
         });
     },
 
-    getPodLeaderboard: async (podId: string): Promise<{ leaderboard: LeaderboardMember[] }> => {
-        return apiRequest<{ leaderboard: LeaderboardMember[] }>(`pods/${podId}/leaderboard`, {
+    getPodLeaderboard: async (podId: string): Promise<PodLeaderboardResponse> => {
+        return apiRequest<PodLeaderboardResponse>(`pods/${podId}/leaderboard`, {
             method: 'GET',
             token: localStorage.getItem('token'),
         });

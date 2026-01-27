@@ -7,6 +7,7 @@ const PodRewards = () => {
     const { id: podId } = useParams<{ id: string }>();
     const [leaderboard, setLeaderboard] = useState<LeaderboardMember[]>([]);
     const [achievements, setAchievements] = useState<Achievement[]>([]);
+    const [validity, setValidity] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -18,6 +19,7 @@ const PodRewards = () => {
                     podService.getPodAchievements(podId)
                 ]);
                 setLeaderboard(lbResponse.leaderboard);
+                setValidity(lbResponse.validity);
                 setAchievements(achResponse.achievements);
             } catch (error) {
                 console.error("Failed to fetch rewards data", error);
@@ -61,8 +63,25 @@ const PodRewards = () => {
                         <span>/</span>
                         <span className="text-text-primary">Leadership Board</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-text-primary mb-2">Team Leadership</h1>
-                    <p className="text-text-secondary text-sm">Recognizing contributions and celebrating team milestones.</p>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-bold text-text-primary mb-2">Team Leadership</h1>
+                            <p className="text-text-secondary text-sm">Recognizing contributions and celebrating team milestones.</p>
+                        </div>
+                        {validity && (
+                            <div className={`px-4 py-2 rounded-xl border flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500 ${validity.isValid ? 'bg-success/5 border-success/20 text-success' : 'bg-red-500/5 border-red-500/20 text-red-500'
+                                }`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${validity.isValid ? 'bg-success/10' : 'bg-red-500/10'
+                                    }`}>
+                                    {validity.isValid ? '✅' : '⚠️'}
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold uppercase tracking-wider">{validity.isValid ? 'Active Pod' : 'Pod Under Audit'}</div>
+                                    <div className="text-[10px] opacity-80">{validity.isValid ? 'Eligible for global rankings' : validity.reasons[0]}</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Team Stats */}
@@ -128,6 +147,17 @@ const PodRewards = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Dead Pod Warning */}
+                {validity && !validity.isValid && (
+                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 mb-8 flex items-center gap-4 animate-pulse">
+                        <div className="text-2xl">⚠️</div>
+                        <div>
+                            <h4 className="text-sm font-bold text-orange-500">Solo Farming Detected</h4>
+                            <p className="text-xs text-text-secondary">This pod is currently under a <b>50% XP Penalty</b> because it has fewer than 3 active members. Recruit teammates to unlock full potential!</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Leaderboard Table */}
                 <div className="bg-background-surface border border-background-border rounded-2xl overflow-hidden mb-8">
