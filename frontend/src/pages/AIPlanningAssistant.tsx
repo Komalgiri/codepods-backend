@@ -1,8 +1,28 @@
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { aiService, type RoadmapStage } from '../services/aiService';
 import { podService } from '../services/podService';
+import {
+    HiOutlineMap,
+    HiOutlineClock,
+    HiOutlineRocketLaunch,
+    HiOutlineBolt,
+    HiOutlineCpuChip,
+    HiOutlineQueueList,
+    HiCheckCircle,
+    HiExclamationCircle,
+    HiPlus,
+    HiCheck,
+    HiOutlineLightBulb,
+    HiOutlineUsers,
+    HiExclamationTriangle,
+    HiStopCircle,
+    HiMagnifyingGlass,
+    HiOutlineCubeTransparent
+} from 'react-icons/hi2';
+import { FaCrown, FaBrain } from 'react-icons/fa6';
+import { HiMiniStop } from 'react-icons/hi2';
 
 
 
@@ -129,7 +149,12 @@ const AIPlanningAssistant = () => {
         }
     };
 
-    if (loading) return <div className="h-full flex items-center justify-center text-text-secondary">AI is generating your roadmap...</div>;
+    if (loading) return (
+        <div className="h-full flex flex-col items-center justify-center gap-4 text-text-secondary animate-in fade-in duration-700">
+            <FaBrain className="w-12 h-12 text-primary animate-pulse" />
+            <span className="font-bold tracking-wider text-sm">AI MANAGER IS ANALYZING YOUR POD...</span>
+        </div>
+    );
 
     return (
         <div className="h-full flex flex-col gap-6 overflow-hidden">
@@ -141,15 +166,9 @@ const AIPlanningAssistant = () => {
                     }`}>
                     <div className="flex items-center gap-3">
                         {toast.type === 'success' ? (
-                            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
+                            <HiCheckCircle className="w-6 h-6 flex-shrink-0" />
                         ) : (
-                            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                            </svg>
+                            <HiExclamationCircle className="w-6 h-6 flex-shrink-0" />
                         )}
                         <span className="font-bold text-sm">{toast.message}</span>
                     </div>
@@ -168,16 +187,25 @@ const AIPlanningAssistant = () => {
                 </div>
 
                 <div className="flex gap-4">
-                    <div className="bg-background-surface border border-background-border rounded-lg px-4 py-2 text-center">
-                        <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Duration</div>
+                    <div className="bg-background-surface/50 border border-background-border rounded-xl px-4 py-2 text-center group hover:border-primary/50 transition-all">
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold text-text-secondary tracking-wider mb-0.5">
+                            <HiOutlineClock className="w-3 h-3" />
+                            Duration
+                        </div>
                         <div className="text-lg font-bold text-white">{stats?.duration || '4 Weeks'}</div>
                     </div>
-                    <div className="bg-background-surface border border-background-border rounded-lg px-4 py-2 text-center">
-                        <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">AI Confidence</div>
+                    <div className="bg-background-surface/50 border border-background-border rounded-xl px-4 py-2 text-center group hover:border-cyan-500/50 transition-all">
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold text-text-secondary tracking-wider mb-0.5">
+                            <HiOutlineLightBulb className="w-3 h-3 text-cyan-500" />
+                            AI Confidence
+                        </div>
                         <div className="text-lg font-bold text-cyan-500">{Math.round((stats?.confidence || 0) * 100)}%</div>
                     </div>
-                    <div className="bg-background-surface border border-background-border rounded-lg px-4 py-2 text-center">
-                        <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Efficiency</div>
+                    <div className="bg-background-surface/50 border border-background-border rounded-xl px-4 py-2 text-center group hover:border-red-400/50 transition-all">
+                        <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold text-text-secondary tracking-wider mb-0.5">
+                            <HiOutlineBolt className="w-3 h-3 text-red-400" />
+                            Efficiency
+                        </div>
                         <div className="text-lg font-bold text-red-400">{stats?.efficiency || '+12%'}</div>
                     </div>
                 </div>
@@ -185,10 +213,10 @@ const AIPlanningAssistant = () => {
 
             <div className="flex-1 flex gap-6 min-h-0">
                 {/* Timeline Column */}
-                <div className="flex-1 bg-background-surface border border-background-border rounded-2xl p-6 relative overflow-y-auto">
-                    <div className="flex items-center justify-between mb-6 sticky top-0 bg-background-surface z-10 py-2">
+                <div className="flex-1 bg-background-surface/40 backdrop-blur-sm border border-background-border rounded-2xl p-6 relative overflow-y-auto">
+                    <div className="flex items-center justify-between mb-6 sticky top-0 bg-background-surface/90 backdrop-blur-md z-10 py-3 -mx-6 px-6 border-b border-background-border/50">
                         <div className="flex items-center gap-2 text-text-primary font-bold">
-                            <svg className="w-5 h-5 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="8" x2="12" y2="21"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg>
+                            <HiOutlineQueueList className="w-5 h-5 text-cyan-500" />
                             <h3>Development Timeline</h3>
                         </div>
                         <div className="flex items-center gap-3">
@@ -239,7 +267,7 @@ const AIPlanningAssistant = () => {
                                                         <div className="flex items-center gap-2">
                                                             {task.status === 'done' && (
                                                                 <div className="w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500">
-                                                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                                    <HiCheck className="w-3 h-3 stroke-[3]" />
                                                                 </div>
                                                             )}
                                                             {!isSynced ? (
@@ -252,7 +280,7 @@ const AIPlanningAssistant = () => {
                                                                     {isSyncing ? (
                                                                         <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                                                                     ) : (
-                                                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                                                        <HiPlus className="w-3.5 h-3.5" />
                                                                     )}
                                                                 </button>
                                                             ) : (
@@ -301,18 +329,18 @@ const AIPlanningAssistant = () => {
                             <button
                                 onClick={handleRegenerateNodes}
                                 disabled={isRegenerating}
-                                className="w-full py-3 bg-text-primary text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-colors disabled:opacity-50"
+                                className="w-full py-3 bg-text-primary text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                             >
-                                <svg className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                                <HiOutlineBolt className={`w-5 h-5 ${isRegenerating ? 'animate-spin' : ''}`} />
                                 {isRegenerating ? 'Analyzing...' : 'Generate AI Plan'}
                             </button>
                         </div>
                     </div>
 
                     {brain && (
-                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4">
+                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4 group hover:border-ai-start/30 transition-all">
                             <div className="flex items-center gap-2 text-ai-start">
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" /><path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z" /></svg>
+                                <HiOutlineCpuChip className="w-5 h-5" />
                                 <h3 className="text-sm font-bold uppercase tracking-wider">Project Memory</h3>
                             </div>
                             <div className="p-3 bg-background/50 rounded-xl border border-background-border/50">
@@ -325,8 +353,8 @@ const AIPlanningAssistant = () => {
                                     <h4 className="text-[10px] font-bold text-text-secondary uppercase">Decisions Made</h4>
                                     <div className="flex flex-col gap-1.5">
                                         {brain.decisions.slice(0, 3).map((d: string, i: number) => (
-                                            <div key={i} className="flex gap-2 items-start text-[10px] text-text-primary">
-                                                <span className="text-ai-start mt-0.5">◈</span>
+                                            <div key={i} className="flex gap-2 items-start text-[10px] text-text-primary group/decision hover:text-ai-start transition-colors">
+                                                <HiMiniStop className="w-2.5 h-2.5 mt-0.5 text-ai-start" />
                                                 <span>{d}</span>
                                             </div>
                                         ))}
@@ -337,10 +365,10 @@ const AIPlanningAssistant = () => {
                     )}
 
                     {/* AI Manager Observations */}
-                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4">
+                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4 group hover:border-primary/30 transition-all">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 text-primary font-bold">
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <HiMagnifyingGlass className="w-5 h-5" />
                                 <h3>AI Manager Observations</h3>
                             </div>
                             <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase">Real-time Analysis</span>
@@ -349,11 +377,13 @@ const AIPlanningAssistant = () => {
                         <div className="space-y-3">
                             {pmInsights.length > 0 ? pmInsights.map((insight, idx) => (
                                 <div key={idx} className={`p-3 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-right-4 duration-500 delay-${idx * 100} ${insight.type === 'blocker' ? 'bg-red-500/5 border-red-500/20' :
-                                        insight.type === 'warning' ? 'bg-orange-500/10 border-orange-500/20' :
-                                            'bg-cyan-500/5 border-cyan-500/20'
+                                    insight.type === 'warning' ? 'bg-orange-500/10 border-orange-500/20' :
+                                        'bg-cyan-500/5 border-cyan-500/20'
                                     }`}>
-                                    <div className="mt-0.5">
-                                        {insight.type === 'blocker' ? '🛑' : insight.type === 'warning' ? '⚠️' : '💡'}
+                                    <div className="mt-0.5 flex-shrink-0">
+                                        {insight.type === 'blocker' ? <HiStopCircle className="w-4 h-4 text-red-500" /> :
+                                            insight.type === 'warning' ? <HiExclamationTriangle className="w-4 h-4 text-orange-500" /> :
+                                                <HiOutlineLightBulb className="w-4 h-4 text-cyan-500" />}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between mb-0.5">
@@ -370,25 +400,30 @@ const AIPlanningAssistant = () => {
                                 </div>
                             )) : (
                                 <div className="text-center py-6">
-                                    <div className="text-2xl mb-2 opacity-50">✨</div>
+                                    <div className="flex justify-center mb-2">
+                                        <HiCheckCircle className="w-8 h-8 text-success opacity-50" />
+                                    </div>
                                     <p className="text-[11px] text-text-secondary italic">Everything looks smooth. No blockers detected!</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex-1 overflow-y-auto">
-                        <div className="flex items-center gap-2 mb-6 sticky top-0 bg-background-surface py-1">
-                            <svg className="w-5 h-5 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                            <h3 className="text-lg font-bold text-text-primary">Team Allocation</h3>
+                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex-1 overflow-y-auto group hover:border-orange-400/30 transition-all">
+                        <div className="flex items-center gap-2 mb-6 sticky top-0 bg-background-surface py-1 border-b border-background-border/30 -mx-6 px-6">
+                            <HiOutlineUsers className="w-5 h-5 text-orange-400" />
+                            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Team Allocation</h3>
                         </div>
 
                         <div className="space-y-4">
                             {teamAllocation.length > 0 ? teamAllocation.map((member) => (
                                 <div key={member.id} className="bg-background/50 border border-background-border rounded-xl p-3">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider truncate max-w-[150px]" title={member.role}>{member.role}</span>
-                                        <svg className="w-4 h-4 text-cyan-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider truncate max-w-[140px]" title={member.role}>{member.role}</span>
+                                            {member.role.toLowerCase().includes('lead') && <FaCrown className="w-2.5 h-2.5 text-yellow-500 mb-0.5" />}
+                                        </div>
+                                        <HiOutlineCubeTransparent className="w-4 h-4 text-cyan-500 shrink-0 opacity-70 group-hover:rotate-90 transition-transform duration-500" />
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} className="w-8 h-8 rounded-full border border-background-border bg-background-surface" />
