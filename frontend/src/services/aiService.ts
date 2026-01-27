@@ -58,8 +58,9 @@ export interface TaskSuggestion {
 }
 
 export const aiService = {
-    getPodPlan: async (podId: string): Promise<RoadmapResponse> => {
-        return apiRequest<RoadmapResponse>(`ai/pods/${podId}/plan`, {
+    getPodPlan: async (podId: string, force: boolean = false): Promise<RoadmapResponse> => {
+        const query = force ? '?force=true' : '';
+        return apiRequest<RoadmapResponse>(`ai/pods/${podId}/plan${query}`, {
             method: 'GET',
             token: localStorage.getItem('token'),
         });

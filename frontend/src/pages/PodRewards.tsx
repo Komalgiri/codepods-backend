@@ -205,8 +205,9 @@ const PodRewards = () => {
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-text-primary">{member.name}</span>
-                                                    {index === 0 && <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded-full border border-yellow-500/20 font-bold uppercase tracking-tight">Weekly Champ</span>}
+                                                    <span className={`font-bold ${member.status === 'pending' ? 'text-text-secondary' : 'text-text-primary'}`}>{member.name}</span>
+                                                    {index === 0 && member.status === 'accepted' && <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded-full border border-yellow-500/20 font-bold uppercase tracking-tight">Weekly Champ</span>}
+                                                    {member.status === 'pending' && <span className="text-[8px] bg-background-border text-text-secondary px-1.5 py-0.5 rounded border border-background-border font-bold uppercase tracking-wider animate-pulse">Invited</span>}
                                                 </div>
                                                 <div className="flex items-center gap-2 text-xs text-text-secondary">
                                                     <span className="capitalize">{member.role}</span>

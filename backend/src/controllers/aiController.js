@@ -56,6 +56,7 @@ const calculateTeamAllocation = (members, podName = '', podDescription = '') => 
 export const getPodRoadmap = async (req, res) => {
     try {
         const { id: podId } = req.params;
+        const { force } = req.query;
         const apiKey = process.env.GEMINI_API_KEY;
 
         const pod = await prisma.pod.findUnique({
@@ -89,7 +90,8 @@ export const getPodRoadmap = async (req, res) => {
         const CACHE_STALE_TIME = 7 * 24 * 60 * 60 * 1000;
         let isCacheValid = false;
 
-        if (pod.aiRoadmap && pod.roadmapUpdatedAt) {
+        // Skip cache if 'force' is present
+        if (pod.aiRoadmap && pod.roadmapUpdatedAt && force !== 'true') {
             const timeSinceUpdate = now - new Date(pod.roadmapUpdatedAt);
             const cachedData = typeof pod.aiRoadmap === 'string' ? JSON.parse(pod.aiRoadmap) : pod.aiRoadmap;
             const previousMemberCount = cachedData.meta?.memberCount || 0;
@@ -114,53 +116,71 @@ export const getPodRoadmap = async (req, res) => {
 
         const activityContext = pod.activities.map(a => `${a.user.name} did ${a.type} ${a.meta?.repoName ? `in ${a.meta.repoName}` : ''} at ${a.createdAt}`).join('\n');
 
+        console.log(`[AI] Preparing prompt with ${pod.activities.length} activities and ${pod.tasks.length} tasks.`);
+
         let roadmap;
         let confidence = 0.92;
         let duration = "7 Days";
         let efficiency = "+15%";
         let stage = "Development";
+        let projectBrain = pod.projectBrain;
 
         if (apiKey) {
             try {
                 const brainContext = pod.projectBrain ? `Previous Strategic Context: ${JSON.stringify(pod.projectBrain)}` : "No previous strategic context recorded.";
                 const prompt = `
-                Analyze the project state and act as an AI Project Manager. 
-                Generate:
-                1. A strategic 7-day roadmap.
-                2. An updated "Project Brain" summary (Long-term memory).
-                3. "PM Insights": Detect blockers (e.g. "Frontend stuck on API"), notice slow tasks, suggest reassignments based on tech stack, and identify bottlenecks.
+                Act as an AI Project Manager for "${pod.name}".
+                Generate a strategic development plan in valid JSON format.
                 
-                Project: ${pod.name}
+                PROJECT CONTEXT:
                 Description: ${pod.description}
                 ${brainContext}
                 
-                Team Members:
-                ${pod.members.map(m => `- ${m.user.name} (ID: ${m.userId}, Role: ${m.role}, Stack: ${m.user.techStack?.join(', ') || 'Generalist'})`).join('\n')}
+                TEAM:
+                ${pod.members.map(m => `- ${m.user.name} (Role: ${m.role}, Stack: ${m.user.techStack?.join(', ') || 'Generalist'})`).join('\n')}
                 
-                Recent Activity:
-                ${activityContext || 'No activity.'}
+                RECENT VELOCITY:
+                ${activityContext || 'No recent activity.'}
                 
-                Current Tasks (Full Visibility):
-                ${pod.tasks.length > 0 ? pod.tasks.map(t => `- "${t.title}" (Status: ${t.status}, AssignedTo: ${t.user?.name || 'Unassigned'}, Stack Required: ${t.description || 'Unknown'}, CreatedAt: ${t.createdAt})`).join('\n') : 'None'}
+                CURRENT TASKS:
+                ${pod.tasks.length > 0 ? pod.tasks.map(t => `- "${t.title}" (Status: ${t.status}, Assigned: ${t.user?.name || 'Open'}, Created: ${t.createdAt})`).join('\n') : 'No tasks recorded.'}
                 
-                Return ONLY a JSON object:
+                REQUIRED JSON OUTPUT (Return ONLY this object):
                 {
-                  "stage": "...",
-                  "roadmap": [...],
+                  "stage": "Strategy|Development|Testing|Deployment",
+                  "roadmap": [
+                    { 
+                      "id": 1, 
+                      "title": "Strategy & Scope Definition", 
+                      "description": "Establish clear MVP boundaries and tech debt audit.", 
+                      "status": "IN PROGRESS", 
+                      "tasks": [{ "name": "Formalize MVP Scope", "status": "pending", "assignee": "Lead" }] 
+                    },
+                    { 
+                      "id": 2, 
+                      "title": "Core Architecture", 
+                      "description": "Setting up the foundation for scalability.", 
+                      "status": "UPCOMING", 
+                      "tasks": [] 
+                    }
+                  ],
                   "projectBrain": {
-                    "summary": "...",
-                    "decisions": ["...", "..."],
-                    "milestones": ["...", "..."],
-                    "techStackAdjustments": "..."
+                    "summary": "Full project state summary...",
+                    "decisions": ["Why X was chosen", "Technical debt identified"],
+                    "milestones": ["Completed Auth", "Database migration"],
+                    "techStackAdjustments": "Switching to X for Y"
                   },
                   "pmInsights": [
-                    { "type": "blocker|warning|suggestion", "message": "...", "priority": "high|medium|low" },
-                    ...
+                    { "type": "blocker", "message": "API design is stalling frontend", "priority": "high" },
+                    { "type": "warning", "message": "Mobile dev velocity is low", "priority": "medium" }
                   ],
                   "confidence": 0.95,
                   "duration": "7 Days",
                   "efficiency": "+18%"
                 }
+                
+                COLD START DIRECTIVE:
+                If the project has zero tasks or activity, focus the roadmap on "Project Onboarding", "Infrastructure Setup", and "Scope Definition". ALWAYS return at least 3-4 roadmap stages.
                 `;
 
                 const geminiRes = await axios.post(
@@ -168,58 +188,75 @@ export const getPodRoadmap = async (req, res) => {
                     { contents: [{ parts: [{ text: prompt }] }] }
                 );
 
-                if (geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    const text = geminiRes.data.candidates[0].content.parts[0].text;
-                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+                const responseText = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (responseText) {
+                    console.log(`[AI] Gemini Responded. Extracting JSON...`);
+                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         const data = JSON.parse(jsonMatch[0]);
-                        if (data.projectBrain) {
-                            await prisma.pod.update({
-                                where: { id: podId },
-                                data: { projectBrain: data.projectBrain }
-                            });
-                            pod.projectBrain = data.projectBrain;
+                        console.log(`[AI] Successfully parsed JSON structure. Roadmap steps count: ${data.roadmap?.length || 0}`);
+
+                        projectBrain = data.projectBrain || projectBrain;
+                        confidence = data.confidence || confidence;
+                        duration = data.duration || duration;
+                        efficiency = data.efficiency || efficiency;
+                        stage = data.stage || stage;
+
+                        if (data.roadmap && data.roadmap.length > 0) {
+                            roadmap = {
+                                steps: data.roadmap,
+                                pmInsights: data.pmInsights || []
+                            };
+                        } else {
+                            console.warn(`[AI] Gemini returned valid JSON but empty roadmap array.`);
                         }
-
-                        // Store as an object containing both the timeline steps and the PM observations
-                        roadmap = {
-                            steps: data.roadmap || [],
-                            pmInsights: data.pmInsights || []
-                        };
-
-                        confidence = data.confidence;
-                        duration = data.duration;
-                        efficiency = data.efficiency;
-                        stage = data.stage;
+                    } else {
+                        console.warn(`[AI] Gemini returned text but no JSON block found.`);
                     }
+                } else {
+                    console.error(`[AI] Gemini returned empty response.`);
                 }
-            } catch (e) { console.error("Gemini Roadmap Error:", e.message); }
+            } catch (e) {
+                console.error(`[AI] Error during generation:`, e.message);
+            }
         }
 
-        if (!roadmap) {
+        if (!roadmap || !roadmap.steps || roadmap.steps.length === 0) {
+            console.log(`[AI] Applying Strategic Onboarding Baseline (Roadmap was empty).`);
             roadmap = {
-                steps: [{ id: 1, title: 'Strategic Start', description: 'Initial setup.', status: 'IN PROGRESS', tasks: [] }],
-                pmInsights: [{ type: "suggestion", message: "Initialize project roadmap with specific tasks.", priority: "medium" }]
+                steps: [
+                    { id: 1, title: 'Strategic Initialization', description: 'Aligning team goals and repository structure.', status: 'IN PROGRESS', tasks: [{ name: 'Define MVP Scope', status: 'pending' }] },
+                    { id: 2, title: 'Role Assignment', description: 'Matching members to core modules.', status: 'UPCOMING', tasks: [] },
+                    { id: 3, title: 'Infrastructure Setup', description: 'Environment config and CI/CD audit.', status: 'UPCOMING', tasks: [] }
+                ],
+                pmInsights: [{ type: "suggestion", message: "Initialize your project roadmap to see real-time AI insights.", priority: "medium" }]
             };
         }
 
         const teamAllocation = calculateTeamAllocation(pod.members, pod.name, pod.description);
         const result = {
             stage,
-            roadmap: roadmap.steps || roadmap, // Fallback if still legacy format 
+            roadmap: roadmap.steps || roadmap,
             pmInsights: roadmap.pmInsights || [],
             confidence,
             duration,
             efficiency,
+            projectBrain,
             meta: { memberCount: pod.members.length, lastUpdated: new Date() }
         };
 
+        // Single atomic update
         await prisma.pod.update({
             where: { id: podId },
-            data: { aiRoadmap: result, roadmapUpdatedAt: new Date() }
+            data: {
+                aiRoadmap: result,
+                roadmapUpdatedAt: new Date(),
+                projectBrain: projectBrain
+            }
         });
 
-        return res.status(200).json({ ...result, members: teamAllocation, projectBrain: pod.projectBrain || null });
+        console.log(`[AI] Roadmap successfully generated and saved for pod ${podId}.`);
+        return res.status(200).json({ ...result, members: teamAllocation });
 
     } catch (error) {
         console.error("AI Plan Error:", error);

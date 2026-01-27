@@ -186,6 +186,7 @@ export const getPodLeaderboard = async (req, res) => {
           role: member.role,
           totalPoints: podPoints, // Pod-specific points
           githubUsername: member.user.githubUsername,
+          status: member.status,
           badges: [...new Set(member.user.rewards.flatMap(r => r.badges || []))], // Badges are still global 'bragging rights'
           level: Math.floor(podPoints / 500) + 1,
         };
@@ -212,8 +213,8 @@ export const getPodLeaderboard = async (req, res) => {
       podActivityCount
     };
 
-    if (activeMemberCount < 3) validity.reasons.push("Minimum 3 members required for competitive ranking");
-    if (podActivityCount < 10) validity.reasons.push("Insufficient recent activity (need 10+ events in 30 days)");
+    if (activeMemberCount < 3) validity.reasons.push("Minimum 3 ACTIVE (Accepted) members required for competitive ranking");
+    if (podActivityCount < 10) validity.reasons.push(`Insufficient recent activity (${podActivityCount}/10 events in 30 days)`);
 
     return res.status(200).json({
       leaderboard,

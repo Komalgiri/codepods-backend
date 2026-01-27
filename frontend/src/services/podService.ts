@@ -62,6 +62,7 @@ export interface LeaderboardMember {
     level: number;
     badges: any[];
     githubUsername?: string;
+    status: string;
 }
 
 export interface PodLeaderboardResponse {

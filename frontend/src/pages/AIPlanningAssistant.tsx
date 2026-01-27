@@ -78,7 +78,7 @@ const AIPlanningAssistant = () => {
             }
 
             // Fetch fresh data
-            const response = await aiService.getPodPlan(podId);
+            const response = await aiService.getPodPlan(podId, isRegen);
 
             // Cache the response
             localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -86,13 +86,13 @@ const AIPlanningAssistant = () => {
                 timestamp: Date.now()
             }));
 
-            setRoadmap(response.roadmap);
+            setRoadmap(response.roadmap || []);
             setTeamAllocation(response.members || []);
             setProjectStage(response.stage || "Development");
             setStats({
-                confidence: response.confidence,
-                duration: response.duration,
-                efficiency: response.efficiency
+                confidence: response.confidence || 0,
+                duration: response.duration || 'Unknown',
+                efficiency: response.efficiency || '0%'
             });
             setMeta(response.meta || null);
             setBrain(response.projectBrain || null);
@@ -236,7 +236,7 @@ const AIPlanningAssistant = () => {
                     </div>
 
                     <div className="relative pl-4 space-y-12 before:absolute before:left-[23px] before:top-4 before:bottom-4 before:w-0.5 before:bg-background-border">
-                        {roadmap.map((stage) => (
+                        {roadmap && Array.isArray(roadmap) && roadmap.map((stage) => (
                             <div key={stage.id} className="relative pl-8">
                                 <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-4 border-background-surface ${stage.status === 'COMPLETED' ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : stage.status === 'IN PROGRESS' ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-background-border'}`}></div>
 
@@ -253,7 +253,7 @@ const AIPlanningAssistant = () => {
                                     </span>
                                 </div>
 
-                                {stage.tasks.length > 0 && (
+                                {stage.tasks && stage.tasks.length > 0 && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                         {stage.tasks.map((task, idx) => {
                                             const taskKey = `${stage.id}-${task.name}`;
@@ -375,7 +375,7 @@ const AIPlanningAssistant = () => {
                         </div>
 
                         <div className="space-y-3">
-                            {pmInsights.length > 0 ? pmInsights.map((insight, idx) => (
+                            {pmInsights && pmInsights.length > 0 ? pmInsights.map((insight, idx) => (
                                 <div key={idx} className={`p-3 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-right-4 duration-500 delay-${idx * 100} ${insight.type === 'blocker' ? 'bg-red-500/5 border-red-500/20' :
                                     insight.type === 'warning' ? 'bg-orange-500/10 border-orange-500/20' :
                                         'bg-cyan-500/5 border-cyan-500/20'
@@ -416,7 +416,7 @@ const AIPlanningAssistant = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {teamAllocation.length > 0 ? teamAllocation.map((member) => (
+                            {teamAllocation && teamAllocation.length > 0 ? teamAllocation.map((member) => (
                                 <div key={member.id} className="bg-background/50 border border-background-border rounded-xl p-3">
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex items-center gap-1.5 min-w-0">

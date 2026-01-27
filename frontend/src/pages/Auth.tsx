@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { HiEye, HiEyeSlash, HiOutlineCubeTransparent } from 'react-icons/hi2';
 
 import GitHubConnectModal from '../components/GitHubConnectModal';
 
@@ -17,6 +18,7 @@ const Auth = () => {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showGitHubModal, setShowGitHubModal] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [authToken, setAuthToken] = useState<string | null>(null);
 
     useEffect(() => {
@@ -86,11 +88,7 @@ const Auth = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
                         <div className="p-1 rounded-lg">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-                                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <HiOutlineCubeTransparent className="w-6 h-6 text-primary" />
                         </div>
                         <span className="text-xl font-bold tracking-tight">CodePods</span>
                     </div>
@@ -200,17 +198,30 @@ const Auth = () => {
                                         </a>
                                     )}
                                 </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete={isLogin ? "current-password" : "new-password"}
-                                    required
-                                    placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    className="w-full bg-background/50 border border-background-border rounded-lg px-4 py-2.5 text-text-primary placeholder:text-text-secondary/50 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-sm"
-                                />
+                                <div className="relative">
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        autoComplete={isLogin ? "current-password" : "new-password"}
+                                        required
+                                        placeholder="••••••••"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        className="w-full bg-background/50 border border-background-border rounded-lg px-4 py-2.5 text-text-primary placeholder:text-text-secondary/50 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-sm pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors focus:outline-none"
+                                    >
+                                        {showPassword ? (
+                                            <HiEyeSlash className="w-5 h-5" />
+                                        ) : (
+                                            <HiEye className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="pt-2">
