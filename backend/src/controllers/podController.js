@@ -20,6 +20,10 @@ export const getUserPods = async (req, res) => {
                     id: true,
                     name: true,
                     email: true,
+                    githubUsername: true,
+                    githubId: true,
+                    reliabilityScore: true,
+                    dynamicsMetrics: true,
                   },
                 },
               },
@@ -34,6 +38,7 @@ export const getUserPods = async (req, res) => {
     const pods = memberships.map((m) => ({
       ...m.pod,
       role: m.role,
+      status: m.status, // Include status
     }));
 
     return res.status(200).json({ pods });
@@ -69,6 +74,7 @@ export const createPod = async (req, res) => {
           create: {
             userId,
             role: "admin", // creator becomes admin
+            status: "accepted", // Creator is always accepted
           },
         },
       },
@@ -108,6 +114,9 @@ export const getPod = async (req, res) => {
       });
     }
 
+    // If pending, they can only see basic info or we warn them?
+    // For now, let them see it so they can decide to join.
+
     // Fetch pod with members and tasks
     const pod = await prisma.pod.findUnique({
       where: { id },
@@ -119,6 +128,10 @@ export const getPod = async (req, res) => {
                 id: true,
                 name: true,
                 email: true,
+                githubUsername: true,
+                githubId: true,
+                reliabilityScore: true,
+                dynamicsMetrics: true,
               },
             },
           },
@@ -146,6 +159,7 @@ export const getPod = async (req, res) => {
 
     return res.status(200).json({
       pod,
+      userStatus: membership.status, // Let frontend know if they are pending
     });
   } catch (error) {
     console.error("Error fetching pod:", error);
@@ -214,6 +228,7 @@ export const addMember = async (req, res) => {
         userId,
         podId,
         role: role || "member",
+        status: "pending", // Invite is pending
       },
       include: {
         user: {
@@ -226,8 +241,10 @@ export const addMember = async (req, res) => {
       },
     });
 
+    // We do NOT invalidate roadmap yet, only when they accept.
+
     return res.status(201).json({
-      message: "Member added successfully 🚀.",
+      message: "Invitation sent successfully 🚀.",
       member: podMember,
     });
   } catch (error) {
@@ -416,6 +433,8 @@ export const getPodActivities = async (req, res) => {
             id: true,
             name: true,
             githubUsername: true,
+            reliabilityScore: true,
+            dynamicsMetrics: true,
           },
         },
       },
@@ -507,7 +526,134 @@ export const syncPodActivity = async (req, res) => {
       results
     });
   } catch (error) {
-    console.error("Error syncing pod activity:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /pods/:id/join - Respond to pod invitation
+export const respondToInvite = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const { status } = req.body; // "accepted" or "rejected"
+    const userId = req.user.id;
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status. Use 'accepted' or 'rejected'." });
+    }
+
+    // Check membership
+    const membership = await prisma.podMember.findUnique({
+      where: {
+        userId_podId: {
+          userId,
+          podId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(404).json({ error: "Invitation not found." });
+    }
+
+    if (membership.status === "accepted") {
+      return res.status(400).json({ error: "You are already a member of this pod." });
+    }
+
+    if (status === "rejected") {
+      // Remove membership
+      await prisma.podMember.delete({
+        where: { id: membership.id },
+      });
+      return res.json({ message: "Invitation rejected." });
+    }
+
+    // Accept invitation
+    const updatedMember = await prisma.podMember.update({
+      where: { id: membership.id },
+      data: { status: "accepted" },
+      include: { pod: true }
+    });
+
+    // Invalidate AI roadmap since we have a new active member
+    await prisma.pod.update({
+      where: { id: podId },
+      data: {
+        aiRoadmap: null,
+        roadmapUpdatedAt: null
+      }
+    });
+
+    res.json({ message: "Welcome to the pod! 🚀", member: updatedMember });
+
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// DELETE /pods/:id - Delete a pod (Admin only)
+export const deletePod = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user is admin of the pod
+    const membership = await prisma.podMember.findUnique({
+      where: { userId_podId: { userId, podId } },
+    });
+
+    if (!membership || membership.role !== "admin") {
+      return res.status(403).json({ error: "Only pod admins can delete the pod." });
+    }
+
+    // Delete tasks, activities, and members first (Prisma handles relations if defined, but being explicit is safer)
+    await prisma.$transaction([
+      prisma.task.deleteMany({ where: { podId } }),
+      prisma.activity.deleteMany({ where: { podId } }),
+      prisma.podMember.deleteMany({ where: { podId } }),
+      prisma.pod.delete({ where: { id: podId } }),
+    ]);
+
+    res.json({ message: "Pod deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting pod:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /pods/:id/leave - Leave a pod
+export const leavePod = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id;
+
+    // Check membership
+    const membership = await prisma.podMember.findUnique({
+      where: { userId_podId: { userId, podId } },
+    });
+
+    if (!membership) {
+      return res.status(404).json({ error: "You are not a member of this pod." });
+    }
+
+    // Loophole check: If admin, ensure they aren't the ONLY admin
+    if (membership.role === "admin") {
+      const adminCount = await prisma.podMember.count({
+        where: { podId, role: "admin" },
+      });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          error: "You are the last admin. Transfer ownership or delete the pod instead."
+        });
+      }
+    }
+
+    await prisma.podMember.delete({
+      where: { id: membership.id },
+    });
+
+    res.json({ message: "You have left the pod." });
+  } catch (error) {
+    console.error("Error leaving pod:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

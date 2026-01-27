@@ -6,6 +6,8 @@ import AIPlanningAssistant from './AIPlanningAssistant';
 import GitHubActivity from './GitHubActivity';
 import PodRewards from './PodRewards';
 import { podService, type Pod, type PodStats } from '../services/podService';
+import { HiChartBar, HiPlus, HiOutlineHome, HiOutlineMap, HiOutlineClipboardList, HiOutlineGift } from 'react-icons/hi';
+import { FaFire, FaUserShield, FaCrown, FaTools, FaGithub } from 'react-icons/fa';
 
 // Type definitions for Sidebar Items
 interface SidebarItem {
@@ -160,27 +162,27 @@ const PodOverview = () => {
         {
             id: 'Overview',
             label: 'Overview',
-            icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            icon: <HiOutlineHome className="w-5 h-5" />
         },
         {
             id: 'AIPlanning',
             label: 'AI Generate Roadmap',
-            icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+            icon: <HiOutlineMap className="w-5 h-5" />
         },
         {
             id: 'TaskBoard',
             label: 'Assign Tasks to Team',
-            icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+            icon: <HiOutlineClipboardList className="w-5 h-5" />
         },
         {
             id: 'GitHubStats',
             label: 'GitHub Activity',
-            icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+            icon: <FaGithub className="w-5 h-5" />
         },
         {
             id: 'Rewards',
             label: 'Rewards & Leaderboard',
-            icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            icon: <HiOutlineGift className="w-5 h-5" />
         }
     ];
 
@@ -299,61 +301,139 @@ const PodOverview = () => {
 
                         {/* Main Content Grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Project Brief */}
-                            <div className="lg:col-span-2 bg-background-surface border border-background-border rounded-2xl p-6 shadow-card">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                                    <h2 className="text-lg font-bold text-text-primary">Project Brief</h2>
-                                </div>
-                                <p className="text-text-secondary text-sm leading-relaxed mb-6">
-                                    {pod.description || "Building the next generation of decentralized collaboration tools."}
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-background/30 border border-background-border rounded-lg p-3 group relative overflow-hidden">
-                                        <div className="text-xs font-bold text-text-secondary mb-1">REPOSITORY</div>
-                                        {pod.repoOwner && pod.repoName ? (
-                                            <div className="flex justify-between items-center">
-                                                <div className="text-sm font-medium text-text-primary truncate">{pod.repoOwner}/{pod.repoName}</div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={handleSync}
-                                                        disabled={updating}
-                                                        className="text-[10px] font-bold text-primary hover:underline disabled:opacity-50"
-                                                    >
-                                                        {updating ? 'SYNCING...' : 'SYNC'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setIsRepoModalOpen(true);
-                                                            fetchUserRepos();
-                                                        }}
-                                                        className="text-[10px] font-bold text-text-secondary hover:text-text-primary"
-                                                    >
-                                                        EDIT
-                                                    </button>
+                            <div className="lg:col-span-2 flex flex-col gap-8">
+                                {/* Project Brief */}
+                                <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        <h2 className="text-lg font-bold text-text-primary">Project Brief</h2>
+                                    </div>
+                                    <p className="text-text-secondary text-sm leading-relaxed mb-6">
+                                        {pod.description || "Building the next generation of decentralized collaboration tools."}
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-background/30 border border-background-border rounded-lg p-3 group relative overflow-hidden">
+                                            <div className="text-xs font-bold text-text-secondary mb-1">REPOSITORY</div>
+                                            {pod.repoOwner && pod.repoName ? (
+                                                <div className="flex justify-between items-center">
+                                                    <div className="text-sm font-medium text-text-primary truncate">{pod.repoOwner}/{pod.repoName}</div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={handleSync}
+                                                            disabled={updating}
+                                                            className="text-[10px] font-bold text-primary hover:underline disabled:opacity-50"
+                                                        >
+                                                            {updating ? 'SYNCING...' : 'SYNC'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setIsRepoModalOpen(true);
+                                                                fetchUserRepos();
+                                                            }}
+                                                            className="text-[10px] font-bold text-text-secondary hover:text-text-primary"
+                                                        >
+                                                            EDIT
+                                                        </button>
+                                                    </div>
                                                 </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        setIsRepoModalOpen(true);
+                                                        fetchUserRepos();
+                                                    }}
+                                                    className="w-full py-1 text-xs font-bold text-primary bg-primary/10 rounded border border-primary/20 hover:bg-primary/20 transition-all"
+                                                >
+                                                    + LINK REPOSITORY
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="bg-background/30 border border-background-border rounded-lg p-3">
+                                            <div className="text-xs font-bold text-text-secondary mb-1">CREATED</div>
+                                            <div className="text-sm font-medium text-text-primary">{new Date(pod.createdAt).toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Project Intelligence (Brain) Section */}
+                                <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card hover:border-ai-start/30 transition-all group overflow-hidden relative">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-ai-start/5 rounded-full -mr-16 -mt-16 group-hover:bg-ai-start/10 transition-colors"></div>
+                                    <div className="flex items-center justify-between mb-4 relative z-10">
+                                        <div className="flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-ai-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" /><path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z" /></svg>
+                                            <h2 className="text-sm font-bold text-text-primary uppercase tracking-wider">Project Intelligence</h2>
+                                        </div>
+                                        <span className="text-[10px] font-bold bg-ai-start/20 text-blue-400 px-2 py-0.5 rounded-full uppercase">Strategic Memory</span>
+                                    </div>
+
+                                    {pod.projectBrain ? (
+                                        <div className="space-y-4 relative z-10">
+                                            <div className="p-3 bg-background/50 rounded-xl border border-background-border/50">
+                                                <p className="text-xs text-text-secondary leading-relaxed italic line-clamp-4">
+                                                    "{pod.projectBrain.summary}"
+                                                </p>
                                             </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setIsRepoModalOpen(true);
-                                                    fetchUserRepos();
-                                                }}
-                                                className="w-full py-1 text-xs font-bold text-primary bg-primary/10 rounded border border-primary/20 hover:bg-primary/20 transition-all"
-                                            >
-                                                + LINK REPOSITORY
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="bg-background/30 border border-background-border rounded-lg p-3">
-                                        <div className="text-xs font-bold text-text-secondary mb-1">CREATED</div>
-                                        <div className="text-sm font-medium text-text-primary">{new Date(pod.createdAt).toLocaleDateString()}</div>
-                                    </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {pod.projectBrain.decisions?.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-[10px] font-bold text-text-secondary uppercase">Key Decisions</div>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            {pod.projectBrain.decisions.slice(0, 3).map((d: string, i: number) => (
+                                                                <div key={i} className="flex gap-2 items-start text-[11px] text-text-primary font-medium">
+                                                                    <span className="text-ai-start mt-0.5">◈</span>
+                                                                    <span className="line-clamp-1">{d}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {pod.projectBrain.milestones?.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="text-[10px] font-bold text-text-secondary uppercase">Recent Milestones</div>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            {pod.projectBrain.milestones.slice(0, 3).map((m: string, i: number) => (
+                                                                <div key={i} className="flex gap-2 items-start text-[11px] text-text-primary font-medium">
+                                                                    <span className="text-green-500 mt-0.5">✔</span>
+                                                                    <span className="line-clamp-1">{m}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-2 border-t border-background-border/30 flex justify-end items-center text-[10px] text-text-secondary font-bold">
+                                                <button
+                                                    onClick={() => setActiveTab('AIPlanning')}
+                                                    className="text-ai-start hover:underline cursor-pointer"
+                                                >
+                                                    VIEW FULL STRATEGY →
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 space-y-3 relative z-10">
+                                            <div className="w-12 h-12 rounded-full bg-ai-start/10 border border-ai-start/20 flex items-center justify-center mx-auto">
+                                                <svg className="w-6 h-6 text-ai-start opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-text-secondary">Project Brain currently learning...</p>
+                                                <button
+                                                    onClick={() => setActiveTab('AIPlanning')}
+                                                    className="text-[10px] font-bold text-ai-start mt-2 hover:underline"
+                                                >
+                                                    GENERATE ROADMAP TO SEED BRAIN
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Pod Health */}
-                            <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card flex flex-col items-center justify-center relative">
+                            <div className="lg:col-span-1 bg-background-surface border border-background-border rounded-2xl p-6 shadow-card flex flex-col items-center justify-center relative">
                                 <h2 className="text-sm font-bold text-text-primary mb-6">Pod Health</h2>
                                 <div className="relative w-40 h-40 flex items-center justify-center mb-6">
                                     <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -386,7 +466,7 @@ const PodOverview = () => {
                                     onClick={() => setIsMemberModalOpen(true)}
                                     className="text-xs font-bold text-primary hover:text-primary-dark flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 transition-all"
                                 >
-                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <HiPlus className="w-3.5 h-3.5" />
                                     Add Member
                                 </button>
                             </div>
@@ -414,11 +494,35 @@ const PodOverview = () => {
                                                             <option value="admin">ADMIN</option>
                                                         </select>
                                                     ) : (
-                                                        <span className={`text-[10px] font-bold px-1.5 rounded ${member.role === 'admin' ? 'bg-green-500/20 text-green-500' :
+                                                        <span className={`text-[10px] font-bold px-1.5 rounded flex items-center gap-1 ${member.role === 'admin' ? 'bg-green-500/20 text-green-500' :
                                                             member.role === 'maintainer' ? 'bg-purple-500/20 text-purple-500' :
                                                                 'bg-blue-500/20 text-blue-500'}`}>
+                                                            {member.role === 'admin' ? <FaCrown className="w-2 h-2" /> : member.role === 'maintainer' ? <FaTools className="w-2 h-2" /> : <FaUserShield className="w-2 h-2" />}
                                                             {member.role.toUpperCase()}
                                                         </span>
+                                                    )}
+
+                                                    {/* Reliability Miniature Meter */}
+                                                    <div className="flex items-center gap-1.5 ml-auto bg-background/50 px-2 py-0.5 rounded border border-background-border/50 group-hover:border-primary/30 transition-colors" title={`Reliability: ${Math.round(member.user?.reliabilityScore || 100)}%`}>
+                                                        <HiChartBar className={`w-3 h-3 ${(member.user?.reliabilityScore || 100) > 80 ? 'text-primary' :
+                                                            (member.user?.reliabilityScore || 100) > 50 ? 'text-yellow-500' : 'text-red-500'
+                                                            }`} />
+                                                        <div className="w-8 h-1 bg-background-border rounded-full overflow-hidden hidden sm:block">
+                                                            <div
+                                                                className={`h-full transition-all duration-1000 ${(member.user?.reliabilityScore || 100) > 80 ? 'bg-primary' :
+                                                                    (member.user?.reliabilityScore || 100) > 50 ? 'bg-yellow-500' : 'bg-red-500'
+                                                                    }`}
+                                                                style={{ width: `${member.user?.reliabilityScore || 100}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-text-secondary">{Math.round(member.user?.reliabilityScore || 100)}</span>
+                                                    </div>
+
+                                                    {(member.user?.dynamicsMetrics?.rescueCount || 0) > 0 && (
+                                                        <div className="flex items-center gap-0.5 text-orange-400 group/rescue" title={`Has rescued ${member.user?.dynamicsMetrics?.rescueCount} tasks!`}>
+                                                            <FaFire className="w-3 h-3 animate-pulse" />
+                                                            <span className="text-[8px] font-bold">{(member.user?.dynamicsMetrics?.rescueCount)}</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

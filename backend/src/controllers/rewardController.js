@@ -6,6 +6,13 @@ export const createReward = async (req, res) => {
     const { userId, points, reason, badges = [] } = req.body;
     const currentUserId = req.user.id; // From authMiddleware
 
+    // Loophole Fix: Only global admins should be able to manually create rewards
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        error: "Forbidden: Only admins can manually award rewards.",
+      });
+    }
+
     // Validate required fields
     if (!userId || points === undefined) {
       return res.status(400).json({
@@ -166,19 +173,21 @@ export const getPodLeaderboard = async (req, res) => {
     // Calculate total points for each member and sort
     const leaderboard = members
       .map((member) => {
-        const rewardPoints = member.user.rewards.reduce((sum, r) => sum + (r.points || 0), 0);
-        const activityPoints = member.user.activities.reduce((sum, a) => sum + (a.value || 0), 0);
-        const totalPoints = rewardPoints + activityPoints;
+        // Loophole Fix: Only count activities and rewards linked to THIS POD
+        // Note: Reward schema doesn't have podId currently, so we use activities which DO have podId.
+        // If we want special 'Pod Rewards', we'd need a podId on Reward model too.
+        // For now, let's count all activities in this pod.
+        const podPoints = member.user.activities.reduce((sum, a) => sum + (a.value || 0), 0);
 
         return {
           id: member.user.id,
           name: member.user.name,
           email: member.user.email,
           role: member.role,
-          totalPoints,
+          totalPoints: podPoints, // Pod-specific points
           githubUsername: member.user.githubUsername,
-          badges: [...new Set(member.user.rewards.flatMap(r => r.badges || []))],
-          level: Math.floor(totalPoints / 500) + 1, // Adjusted level calculation
+          badges: [...new Set(member.user.rewards.flatMap(r => r.badges || []))], // Badges are still global 'bragging rights'
+          level: Math.floor(podPoints / 500) + 1,
         };
       })
       .sort((a, b) => b.totalPoints - a.totalPoints);

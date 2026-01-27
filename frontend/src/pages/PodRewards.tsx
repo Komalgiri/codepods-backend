@@ -101,25 +101,30 @@ const PodRewards = () => {
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-4">
-                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm group hover:border-primary/50 transition-colors" title="High impact commits earn +15 XP">
                             <span className="text-sm">🔨</span>
                             <span className="text-xs font-bold text-text-primary">Commit</span>
-                            <span className="text-xs font-bold text-primary">+10 XP</span>
+                            <span className="text-xs font-bold text-primary">+10-15 XP</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm group hover:border-blue-500/50 transition-colors">
                             <span className="text-sm">📑</span>
                             <span className="text-xs font-bold text-text-primary">Open PR</span>
-                            <span className="text-xs font-bold text-blue-500">+25 XP</span>
+                            <span className="text-xs font-bold text-blue-500">+20 XP</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm group hover:border-green-500/50 transition-colors">
                             <span className="text-sm">🚀</span>
                             <span className="text-xs font-bold text-text-primary">Merge PR</span>
-                            <span className="text-xs font-bold text-green-500">+50 XP</span>
+                            <span className="text-xs font-bold text-green-500">+100 XP</span>
                         </div>
-                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm">
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm group hover:border-purple-500/50 transition-colors">
+                            <span className="text-sm">🎓</span>
+                            <span className="text-xs font-bold text-text-primary">Review</span>
+                            <span className="text-xs font-bold text-purple-500">+15 XP</span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-background-surface border border-background-border px-3 py-1.5 rounded-lg shadow-sm group hover:border-yellow-500/50 transition-colors">
                             <span className="text-sm">✅</span>
-                            <span className="text-xs font-bold text-text-primary">Task Done</span>
-                            <span className="text-xs font-bold text-yellow-500">+100 XP</span>
+                            <span className="text-xs font-bold text-text-primary">Close Issue</span>
+                            <span className="text-xs font-bold text-yellow-500">+25 XP</span>
                         </div>
                     </div>
                 </div>

@@ -10,6 +10,7 @@ const AuthCallback = () => {
     const [step, setStep] = useState<'processing' | 'review'>('processing');
     const [techStack, setTechStack] = useState<string[]>([]);
     const [role, setRole] = useState<string>('');
+    const [analysis, setAnalysis] = useState<any>(null);
     const [customStack, setCustomStack] = useState('');
 
     useEffect(() => {
@@ -36,6 +37,7 @@ const AuthCallback = () => {
                     const result = await githubService.analyzeProfile();
                     setTechStack(result.techStack);
                     setRole(result.inferredRole || 'Developer');
+                    setAnalysis(result.roleAnalysis);
                     setStep('review');
                 } catch (error) {
                     console.error("Analysis failed", error);
@@ -125,6 +127,39 @@ const AuthCallback = () => {
                                     </svg>
                                 </div>
                             </div>
+
+                            {/* Why this role? Section */}
+                            {analysis && (
+                                <div className="p-4 rounded-xl bg-background/30 border border-background-border/50 space-y-3 animate-in fade-in slide-in-from-top-2 duration-700">
+                                    <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        WHY THIS ROLE?
+                                    </div>
+                                    <p className="text-sm text-text-secondary leading-relaxed italic">
+                                        "{analysis.reason}"
+                                    </p>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                        {analysis.languages.map((lang: any) => (
+                                            <div key={lang.name} className="flex items-center gap-1.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                                <span className="text-xs font-medium text-text-primary">{lang.name}</span>
+                                                <span className="text-[10px] text-text-secondary">{lang.percentage}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="h-1 shadow-inner w-full bg-background-border/30 overflow-hidden rounded-full flex">
+                                        {analysis.languages.map((lang: any, i: number) => (
+                                            <div
+                                                key={lang.name}
+                                                style={{ width: `${lang.percentage}%`, opacity: 1 - (i * 0.15) }}
+                                                className="h-full bg-primary transition-all duration-1000 ease-out"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Tech Stack Section */}

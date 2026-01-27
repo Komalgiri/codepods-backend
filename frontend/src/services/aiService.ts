@@ -1,4 +1,3 @@
-
 import { apiRequest } from './api';
 
 export interface RoadmapStage {
@@ -6,7 +5,7 @@ export interface RoadmapStage {
     title: string;
     description: string;
     status: 'COMPLETED' | 'IN PROGRESS' | 'UPCOMING';
-    tasks: { name: string; status: 'done' | 'progress' | 'pending'; progress?: number; assignee?: string }[];
+    tasks: { name: string; status: 'done' | 'progress' | 'pending'; progress?: number; assignee?: string; assigneeId?: string }[];
 }
 
 export interface TeamAllocationMember {
@@ -16,13 +15,27 @@ export interface TeamAllocationMember {
     match: number;
 }
 
+export interface ProjectBrain {
+    summary: string;
+    decisions: string[];
+    milestones: string[];
+    techStackAdjustments: string;
+}
+
 export interface RoadmapResponse {
     stage: string;
     roadmap: RoadmapStage[];
+    projectBrain: ProjectBrain | null;
     members: TeamAllocationMember[];
     confidence: number;
     duration: string;
     efficiency: string;
+    meta?: {
+        cached: boolean;
+        daysSinceGeneration: number;
+        daysUntilRegeneration: number;
+        lastUpdated: string;
+    };
 }
 
 export interface AIReply {
@@ -34,6 +47,7 @@ export interface TaskSuggestion {
     title: string;
     description: string;
     priority: 'high' | 'medium' | 'low';
+    assigneeId: string;
 }
 
 export const aiService = {
@@ -44,18 +58,17 @@ export const aiService = {
         });
     },
 
-    suggestTasks: async (podId: string): Promise<{ suggestions: TaskSuggestion[] }> => {
-        return apiRequest<{ suggestions: TaskSuggestion[] }>(`ai/pods/${podId}/suggest-tasks`, {
-            method: 'POST',
+    getProjectBrain: async (podId: string): Promise<{ name: string; brain: ProjectBrain }> => {
+        return apiRequest<{ name: string; brain: ProjectBrain }>(`ai/pods/${podId}/brain`, {
+            method: 'GET',
             token: localStorage.getItem('token'),
         });
     },
 
-    chatWithAI: async (podId: string, message: string): Promise<AIReply> => {
-        return apiRequest<AIReply>(`ai/pods/${podId}/chat`, {
+    suggestTasks: async (podId: string): Promise<{ suggestions: TaskSuggestion[] }> => {
+        return apiRequest<{ suggestions: TaskSuggestion[] }>(`ai/pods/${podId}/suggest-tasks`, {
             method: 'POST',
             token: localStorage.getItem('token'),
-            body: JSON.stringify({ message }),
         });
     }
 };

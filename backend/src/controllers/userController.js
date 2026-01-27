@@ -22,7 +22,7 @@ export const signup = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -32,6 +32,11 @@ export const signup = async (req, res) => {
         email: user.email,
         name: user.name,
         githubId: user.githubId,
+        techStack: user.techStack,
+        inferredRole: user.inferredRole,
+        roleAnalysis: user.roleAnalysis,
+        reliabilityScore: user.reliabilityScore || 100,
+        dynamicsMetrics: user.dynamicsMetrics || {},
       },
     });
   } catch (error) {
@@ -54,7 +59,7 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -64,6 +69,11 @@ export const login = async (req, res) => {
         email: user.email,
         name: user.name,
         githubId: user.githubId,
+        techStack: user.techStack,
+        inferredRole: user.inferredRole,
+        roleAnalysis: user.roleAnalysis,
+        reliabilityScore: user.reliabilityScore || 100,
+        dynamicsMetrics: user.dynamicsMetrics || {},
       },
     });
   } catch (error) {
@@ -83,7 +93,12 @@ export const getProfile = async (req, res) => {
         name: true,
         email: true,
         githubId: true,
+        techStack: true,
+        inferredRole: true,
+        roleAnalysis: true,
         createdAt: true,
+        reliabilityScore: true,
+        dynamicsMetrics: true,
       }
     });
 
@@ -157,15 +172,13 @@ export const searchUsers = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, githubUsername, techStack, inferredRole } = req.body;
+    const { name, githubUsername } = req.body;
 
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(name && { name }),
         ...(githubUsername && { githubUsername }),
-        ...(techStack && { techStack }),
-        ...(inferredRole && { inferredRole }),
       },
       select: {
         id: true,

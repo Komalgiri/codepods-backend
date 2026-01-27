@@ -143,6 +143,15 @@ export const syncActivity = async (req, res) => {
     // Sync GitHub activity
     const results = await syncGitHubActivity(userId, user.githubToken);
 
+    // Also refresh profile analysis whenever user syncs
+    try {
+      const { analyzeAndSaveProfile } = await import("../services/githubService.js");
+      await analyzeAndSaveProfile(userId, user.githubToken);
+      console.log(`[SYNC] Refreshed profile analysis for user ${userId}`);
+    } catch (analysisError) {
+      console.error("Analysis refresh failed during sync:", analysisError.message);
+    }
+
     return res.status(200).json({
       message: "GitHub activity synced successfully ✅",
       results: {

@@ -8,19 +8,45 @@ import prisma from "../utils/prismaClient.js";
  */
 export const fetchUserRepos = async (accessToken) => {
   try {
-    const response = await axios.get("https://api.github.com/user/repos", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-      params: {
-        sort: "created",
-        direction: "desc",
-        per_page: 100, // Max repos per page
-      },
-    });
-    return response.data;
+    let page = 1;
+    let repos = [];
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await axios.get("https://api.github.com/user/repos", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+        params: {
+          sort: "created",
+          direction: "desc",
+          per_page: 100, // Max repos per page
+          page: page
+        },
+      });
+
+      if (response.data.length === 0) {
+        hasMore = false;
+      } else {
+        repos = repos.concat(response.data);
+        if (response.data.length < 100) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      // Safety break to prevent infinite loops or excessive API usage
+      if (page > 5) hasMore = false; // Limit to 500 recently active repos
+    }
+    return repos;
   } catch (error) {
+    if (error.response?.status === 401) {
+      // Token is invalid, we don't know whose it is here easily without passing userId,
+      // but fetchUserRepos is usually called where we have the user.
+      console.error("GitHub Token is invalid (401).");
+    }
     console.error("Error fetching user repos:", error.response?.data || error.message);
     throw new Error("Failed to fetch GitHub repositories");
   }
@@ -36,26 +62,54 @@ export const fetchUserRepos = async (accessToken) => {
  */
 export const fetchRepoCommits = async (accessToken, owner, repo, since = null) => {
   try {
-    const params = {
-      per_page: 100,
-    };
+    let page = 1;
+    let allCommits = [];
+    let hasMore = true;
 
-    if (since) {
-      params.since = since.toISOString();
+    while (hasMore) {
+      const params = {
+        per_page: 100,
+        page: page
+      };
+
+      if (since) {
+        params.since = since.toISOString();
+      }
+
+      const response = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/commits`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+          params: params,
+        }
+      );
+
+      if (response.data.length === 0) {
+        hasMore = false;
+      } else {
+        allCommits = allCommits.concat(response.data);
+        if (response.data.length < 100) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      // Limit to 3 pages (300 commits) per repo to avoid rate limits
+      if (page > 3) hasMore = false;
     }
 
-    const response = await axios.get(
-      `https://api.github.com/repos/${owner}/${repo}/commits`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-        params: params,
-      }
-    );
-    return response.data;
+    return allCommits;
   } catch (error) {
+    // Graceful handling for empty repositories
+    if (error.response?.status === 409 || error.response?.data?.message?.includes('empty')) {
+      console.warn(`[GITHUB] Skipping empty repository: ${owner}/${repo}`);
+      return []; // Return empty array so scan can continue
+    }
+
     console.error(`Error fetching commits for ${owner}/${repo}:`, error.response?.data || error.message);
     throw new Error(`Failed to fetch commits for ${owner}/${repo}`);
   }
@@ -77,24 +131,56 @@ export const fetchWeeklyPRs = async (accessToken, owner, repo, since = null) => 
       since = date;
     }
 
-    const response = await axios.get(
-      `https://api.github.com/repos/${owner}/${repo}/pulls`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-        params: {
-          state: "all",
-          sort: "created",
-          direction: "desc",
-          per_page: 100,
-        },
-      }
-    );
+    let page = 1;
+    let allPRs = [];
+    let hasMore = true;
 
-    // Filter by date since GitHub API pulls endpoint doesn't have a 'since' parameter for PRs like commits does
-    return response.data.filter(pr => new Date(pr.created_at) >= since || new Date(pr.updated_at) >= since);
+    while (hasMore) {
+      const response = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/pulls`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+          params: {
+            state: "all",
+            sort: "created",
+            direction: "desc",
+            per_page: 100,
+            page: page
+          },
+        }
+      );
+
+      // Client-side filtering because GitHub API PR 'since' is tricky
+      // If the entire page is older than 'since', we can stop pagination
+      let pagePRs = response.data;
+      if (pagePRs.length === 0) {
+        hasMore = false;
+      } else {
+        // Check if the oldest PR in this batch is still newer than 'since'
+        // Array is sorted descending, so last element is oldest
+        const oldestPRDate = new Date(pagePRs[pagePRs.length - 1].created_at);
+
+        // Filter this page
+        const relevantPRs = pagePRs.filter(pr =>
+          new Date(pr.created_at) >= since || new Date(pr.updated_at) >= since
+        );
+
+        allPRs = allPRs.concat(relevantPRs);
+
+        if (response.data.length < 100 || oldestPRDate < since) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      if (page > 3) hasMore = false; // Limit to 300 PRs
+    }
+
+    return allPRs;
   } catch (error) {
     console.error(`Error fetching PRs for ${owner}/${repo}:`, error.response?.data || error.message);
     return [];
@@ -102,20 +188,103 @@ export const fetchWeeklyPRs = async (accessToken, owner, repo, since = null) => 
 };
 
 /**
- * Calculate points for different activity types
- * @param {string} activityType - Type of activity
+ * Fetch closed issues from a repository
+ */
+export const fetchWeeklyIssues = async (accessToken, owner, repo, since = null) => {
+  try {
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/issues`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+        params: {
+          state: "closed",
+          since: since?.toISOString(),
+          sort: "updated",
+          direction: "desc",
+          per_page: 100,
+        },
+      }
+    );
+    // Filter out PRs (GitHub issues API returns both)
+    return response.data.filter(issue => !issue.pull_request);
+  } catch (error) {
+    console.error(`Error fetching issues for ${owner}/${repo}:`, error.message);
+    return [];
+  }
+};
+
+/**
+ * Fetch PR review comments
+ */
+export const fetchRepoReviews = async (accessToken, owner, repo, since = null) => {
+  try {
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/comments`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+        params: {
+          since: since?.toISOString(),
+          sort: "created",
+          direction: "desc",
+          per_page: 100,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching reviews for ${owner}/${repo}:`, error.message);
+    return [];
+  }
+};
+
+/**
+ * Calculate points for different activity types using weighted "Skill Economy"
+ * @param {string} type - Type of activity
+ * @param {object} meta - Activity metadata (for impact analysis)
  * @returns {number} Points value
  */
-const getActivityPoints = (activityType) => {
+const getActivityPoints = (type, meta = {}) => {
+  if (type === 'commit') {
+    const msg = (meta.message || '').trim().toLowerCase();
+
+    // 🛡️ ANTI-ABUSE: Block tiny/spammy commit messages
+    // Messages like "fix", "update", "temp", "rev", or very short strings are ignored
+    if (msg.length < 5 || /^(fix|update|temp|rev|patch|done|test|commit|changes|\.|\!)$/.test(msg)) {
+      return 0;
+    }
+
+    // 🧱 Skill Economy: Differentiate by impact
+    const isLowImpact = /(docs|typo|readme|format|cleanup|style|chore|comment|lint)/.test(msg);
+    const isHighImpact = /(feat|fix\s+|implement|refactor|core|breaking|logic|security|auth|api|database)/.test(msg);
+
+    // Reduced base values to prioritize PRs over individual commits
+    if (isLowImpact) return 1;
+    if (isHighImpact) return 8;
+    return 3;
+  }
+
+  if (type === 'pr_merged') {
+    const changes = (meta.additions || 0) + (meta.deletions || 0);
+    // 🛡️ ANTI-ABUSE: Tiny PR Merges (less than 10 lines changed) get significantly less XP
+    if (changes < 10 && (meta.changedFiles || 0) < 2) return 30; // Reduced from 150
+    return 150;     // HIGH IMPACT: Incentivize quality PR merges
+  }
+
   const pointMap = {
-    commit: 10,
     repo_created: 50,
-    pr_opened: 25,
-    pr_merged: 50,
-    issue_opened: 15,
-    issue_closed: 20,
+    pr_opened: 20,
+    issue_opened: 5,
+    issue_closed: 25,
+    review_comment: 15,
   };
-  return pointMap[activityType] || 5; // Default 5 points
+
+  return pointMap[type] || 5;
 };
 
 /**
@@ -127,91 +296,94 @@ const getActivityPoints = (activityType) => {
  * @returns {Promise<Activity|null>} Created activity or null if duplicate
  */
 export const storeActivity = async (userId, type, meta, podId = null) => {
-  // Check for duplicate activities
-  // For commits, check by SHA; for repos, check by repo name
-  let existingActivity = null;
-
   // Use the actual activity date if provided in meta, otherwise default to now
   const activityDate = meta.createdAt ? new Date(meta.createdAt) : new Date();
 
-  if (type === "commit" && meta.sha) {
-    // Check for commit SHA across a longer window to prevent duplicates during re-syncs
-    const recentActivities = await prisma.activity.findMany({
-      where: {
-        userId,
-        type,
-        createdAt: {
-          gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
-        },
-      },
-    });
+  let existingActivity = null;
 
-    existingActivity = recentActivities.find(
-      (activity) => activity.meta && activity.meta.sha === meta.sha
-    );
-  } else if (type === "repo_created" && meta.repoFullName) {
-    const repoCreatedDate = new Date(meta.createdAt);
-    const oneDayAfter = new Date(repoCreatedDate);
-    oneDayAfter.setDate(oneDayAfter.getDate() + 1);
-
-    const recentActivities = await prisma.activity.findMany({
-      where: {
-        userId,
-        type,
-        createdAt: {
-          gte: repoCreatedDate,
-          lte: oneDayAfter,
-        },
-      },
-    });
-
-    existingActivity = recentActivities.find(
-      (activity) => activity.meta && activity.meta.repoFullName === meta.repoFullName
-    );
-  }
-
-  // If activity already exists, update the date if it's incorrect (Self-healing for wrong dates)
-  if (existingActivity) {
-    if (existingActivity.createdAt.getTime() !== activityDate.getTime()) {
-      await prisma.activity.update({
-        where: { id: existingActivity.id },
-        data: { createdAt: activityDate }
+  try {
+    if (type === "commit" && meta.sha) {
+      // Efficient DB lookup using JSON path for SHA
+      existingActivity = await prisma.activity.findFirst({
+        where: {
+          userId,
+          type,
+          meta: {
+            path: ['sha'],
+            equals: meta.sha
+          }
+        }
+      });
+    } else if (type === "repo_created" && meta.repoFullName) {
+      existingActivity = await prisma.activity.findFirst({
+        where: {
+          userId,
+          type,
+          meta: {
+            path: ['repoFullName'],
+            equals: meta.repoFullName
+          }
+        }
+      });
+    } else if ((type === "pr_opened" || type === "pr_merged") && meta.prUrl) {
+      existingActivity = await prisma.activity.findFirst({
+        where: {
+          userId,
+          type: type,
+          meta: { path: ['prUrl'], equals: meta.prUrl }
+        }
+      });
+    } else if (type === "issue_closed" && meta.issueUrl) {
+      existingActivity = await prisma.activity.findFirst({
+        where: {
+          userId,
+          type,
+          meta: { path: ['issueUrl'], equals: meta.issueUrl }
+        }
+      });
+    } else if (type === "review_comment" && meta.commentId) {
+      existingActivity = await prisma.activity.findFirst({
+        where: {
+          userId,
+          type,
+          meta: { path: ['commentId'], equals: meta.commentId }
+        }
       });
     }
-    return null;
-  }
 
-  // Handle PR duplicates by HTML URL
-  if ((type === "pr_opened" || type === "pr_merged") && meta.prUrl) {
-    const recentPRActivities = await prisma.activity.findMany({
-      where: {
+    // If activity already exists, ensure the date is correct (Self-healing)
+    if (existingActivity) {
+      if (existingActivity.createdAt.getTime() !== activityDate.getTime()) {
+        await prisma.activity.update({
+          where: { id: existingActivity.id },
+          data: { createdAt: activityDate }
+        });
+      }
+      return null; // Skip creation
+    }
+
+    // No duplicate found, proceed to create
+    const points = getActivityPoints(type, meta);
+
+    const activity = await prisma.activity.create({
+      data: {
         userId,
         type,
-        createdAt: {
-          gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // Last year
-        },
+        meta,
+        value: points,
+        podId,
+        createdAt: activityDate, // Use the ACTUAL commit/PR date here 🚀
       },
     });
 
-    if (recentPRActivities.find(a => a.meta && a.meta.prUrl === meta.prUrl)) {
-      return null;
-    }
+    return activity;
+
+  } catch (error) {
+    // If JSON filtering fails (e.g. unsupported DB), fallback to create and ignore unique constraint errors if any
+    console.error("Error in storeActivity duplicate check:", error.message);
+    // Try to create anyway, it might fail if we had a unique constraint (which we don't yet)
+    return null;
   }
-
-  const points = getActivityPoints(type);
-
-  const activity = await prisma.activity.create({
-    data: {
-      userId,
-      type,
-      meta,
-      value: points,
-      podId,
-      createdAt: activityDate, // Use the ACTUAL commit/PR date here 🚀
-    },
-  });
-
-  return activity;
 };
 
 /**
@@ -296,6 +468,12 @@ export const syncGitHubActivity = async (userId, accessToken) => {
     const githubUser = await getGitHubUser(accessToken);
     const userLogin = githubUser.login;
 
+    // Mark token as valid if we reach here
+    await prisma.user.update({
+      where: { id: userId },
+      data: { githubTokenValid: true }
+    });
+
     // 2. Fetch user's repositories
     const repos = await fetchUserRepos(accessToken);
     results.reposFetched = repos.length;
@@ -303,6 +481,10 @@ export const syncGitHubActivity = async (userId, accessToken) => {
     // 2. For each repo, check if it's new (created in last 30 days) and fetch commits
     const syncPeriod = new Date();
     syncPeriod.setDate(syncPeriod.getDate() - 30); // 30 days for general activity sync
+
+    // Define 7-day window for repo creation tracking
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const newActivities = [];
 
@@ -338,12 +520,18 @@ export const syncGitHubActivity = async (userId, accessToken) => {
 
         results.commitsFetched += commits.length;
 
+        // 🛡️ ANTI-ABUSE: Limit how many commits per repo we award points for in a single sync
+        // Pushing 50 tiny commits will only reward the first 10, preventing spam.
+        let awardedCommitsInBatch = 0;
+        const COMMIT_BATCH_CAP = 10;
+
         // Store commit activities
-        // Only count commits authored by the authenticated user
         for (const commit of commits) {
           const commitAuthor = commit.author?.login || commit.committer?.login;
-          // Only track commits by the authenticated user
           if (commitAuthor === userLogin) {
+            // Check if we hit the batch cap for this repo
+            const shouldAwardPoints = awardedCommitsInBatch < COMMIT_BATCH_CAP;
+
             const activity = await storeActivity(
               userId,
               "commit",
@@ -358,7 +546,17 @@ export const syncGitHubActivity = async (userId, accessToken) => {
                 createdAt: commit.commit.author.date,
               }
             );
+
             if (activity) {
+              if (shouldAwardPoints) {
+                awardedCommitsInBatch++;
+              } else {
+                // Self-healing: Update activity to have 0 value if cap exceeded
+                await prisma.activity.update({
+                  where: { id: activity.id },
+                  data: { value: 0 }
+                });
+              }
               newActivities.push(activity);
               results.activitiesCreated++;
             }
@@ -390,6 +588,9 @@ export const syncGitHubActivity = async (userId, accessToken) => {
             }
 
             if (isMerged) {
+              // 🧪 PROOF OF WORK: Fetch PR details to verify "Minimum Diff Size"
+              const prChanges = await fetchPRChanges(accessToken, repo.owner.login, repo.name, pr.number);
+
               const activity = await storeActivity(userId, "pr_merged", {
                 prNumber: pr.number,
                 title: pr.title,
@@ -397,11 +598,53 @@ export const syncGitHubActivity = async (userId, accessToken) => {
                 repoFullName: repo.full_name,
                 prUrl: pr.html_url,
                 createdAt: pr.merged_at,
+                // Pass diff stats to getActivityPoints for quality gating
+                additions: prChanges.additions,
+                deletions: prChanges.deletions,
+                changedFiles: prChanges.changedFiles
               });
               if (activity) {
                 newActivities.push(activity);
                 results.activitiesCreated++;
               }
+            }
+          }
+        }
+
+        // Fetch and process Issues
+        const issues = await fetchWeeklyIssues(accessToken, repo.owner.login, repo.name, syncPeriod);
+        for (const issue of issues) {
+          if (issue.closed_by?.login === userLogin) {
+            const activity = await storeActivity(userId, "issue_closed", {
+              issueNumber: issue.number,
+              title: issue.title,
+              repoName: repo.name,
+              repoFullName: repo.full_name,
+              issueUrl: issue.html_url,
+              createdAt: issue.closed_at,
+            });
+            if (activity) {
+              newActivities.push(activity);
+              results.activitiesCreated++;
+            }
+          }
+        }
+
+        // Fetch and process Reviews
+        const reviews = await fetchRepoReviews(accessToken, repo.owner.login, repo.name, syncPeriod);
+        for (const review of reviews) {
+          if (review.user?.login === userLogin) {
+            const activity = await storeActivity(userId, "review_comment", {
+              commentId: review.id,
+              prUrl: review.pull_request_url,
+              repoName: repo.name,
+              repoFullName: repo.full_name,
+              createdAt: review.created_at,
+              message: review.body,
+            });
+            if (activity) {
+              newActivities.push(activity);
+              results.activitiesCreated++;
             }
           }
         }
@@ -420,6 +663,12 @@ export const syncGitHubActivity = async (userId, accessToken) => {
 
     return results;
   } catch (error) {
+    if (error.response?.status === 401) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { githubTokenValid: false }
+      });
+    }
     console.error("Error syncing GitHub activity:", error);
     results.errors.push(error.message);
     throw error;
@@ -482,16 +731,27 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
     results.commitsFetched = commits.length;
 
     // 3. For each commit, find the corresponding user in the pod
+    // 🛡️ ANTI-ABUSE: Limit how many commits per user we award points for in a single batch
+    let commitsByUser = {}; // userId -> count
+    const BATCH_COMMIT_CAP = 10;
+
     for (const commit of commits) {
       const githubLogin = commit.author?.login || commit.committer?.login;
-      if (!githubLogin) continue;
+      const authorEmail = commit.commit.author?.email;
 
-      // Find member with this github login
+      if (!githubLogin && !authorEmail) continue;
+
+      // Find member with this github login OR email
       const member = pod.members.find(m =>
-        m.user.githubUsername === githubLogin ||
-        (m.user.name === githubLogin && !m.user.githubUsername)
+        (githubLogin && m.user.githubUsername === githubLogin) ||
+        (authorEmail && m.user.email === authorEmail) ||
+        (githubLogin && m.user.name === githubLogin && !m.user.githubUsername)
       );
+
       if (member) {
+        if (!commitsByUser[member.userId]) commitsByUser[member.userId] = 0;
+        const shouldAwardPoints = commitsByUser[member.userId] < BATCH_COMMIT_CAP;
+
         const activity = await storeActivity(
           member.userId,
           "commit",
@@ -502,12 +762,22 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
             repoFullName: `${owner}/${repoName}`,
             repoUrl: commit.html_url.split('/commit/')[0],
             commitUrl: commit.html_url,
-            author: githubLogin,
+            author: githubLogin || authorEmail,
             createdAt: commit.commit.author.date,
           },
           podId
         );
+
         if (activity) {
+          if (shouldAwardPoints) {
+            commitsByUser[member.userId]++;
+          } else {
+            // Self-healing: Set value to 0 if they exceeded the fair-use cap
+            await prisma.activity.update({
+              where: { id: activity.id },
+              data: { value: 0 }
+            });
+          }
           results.activitiesCreated++;
         }
       }
@@ -519,6 +789,7 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
 
     for (const pr of prs) {
       const githubLogin = pr.user?.login;
+      // Note: GitHub PR API doesn't easily expose email of author without extra calls
       if (!githubLogin) continue;
 
       const member = pod.members.find(m =>
@@ -546,6 +817,9 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
 
         // PR Merged
         if (pr.merged_at && new Date(pr.merged_at) >= syncWindow) {
+          // 🧪 PROOF OF WORK: Fetch PR details to verify quality
+          const prChanges = await fetchPRChanges(accessToken, owner, repoName, pr.number);
+
           const activity = await storeActivity(
             member.userId,
             "pr_merged",
@@ -556,6 +830,10 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
               repoFullName: `${owner}/${repoName}`,
               prUrl: pr.html_url,
               createdAt: pr.merged_at,
+              // Pass diff stats to getActivityPoints
+              additions: prChanges.additions,
+              deletions: prChanges.deletions,
+              changedFiles: prChanges.changedFiles
             },
             podId
           );
@@ -580,54 +858,174 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
  */
 export const analyzeAndSaveProfile = async (userId, accessToken) => {
   try {
-    // 1. Fetch Repos
+    // 1. Fetch Repos using existing helper
     const repos = await fetchUserRepos(accessToken);
 
-    // 2. Aggregate Languages
-    const languageCounts = {};
+    const languageMap = {}; // name -> bytes
+    const repoCountMap = {}; // name -> count (for fallback)
+
+    // 2. Fetch Detailed Language Stats for Top 5 Active Repos
+    // Sort by updated_at to get recent active work
+    const activeRepos = [...repos]
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      .slice(0, 5);
+
+    // Process active repos with detailed breakdown
+    await Promise.all(activeRepos.map(async (repo) => {
+      try {
+        const langResponse = await axios.get(repo.languages_url, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const langs = langResponse.data;
+        Object.entries(langs).forEach(([lang, bytes]) => {
+          // Weight bytes by 1 (direct usage) - could add recency multiplier here if needed
+          languageMap[lang] = (languageMap[lang] || 0) + bytes;
+        });
+      } catch (e) {
+        console.warn(`Failed to fetch languages for ${repo.full_name}, falling back to primary language`);
+        if (repo.language) {
+          // Fallback: Assign arbitrary 'bytes' to primary language
+          languageMap[repo.language] = (languageMap[repo.language] || 0) + 50000;
+        }
+      }
+    }));
+
+    // Process remaining repos (fallback to primary language to save API calls)
+    const processedRepoIds = new Set(activeRepos.map(r => r.id));
     repos.forEach(repo => {
-      if (repo.language) {
-        languageCounts[repo.language] = (languageCounts[repo.language] || 0) + 1;
+      if (!processedRepoIds.has(repo.id) && repo.language) {
+        // Give older/less active repos less weight
+        languageMap[repo.language] = (languageMap[repo.language] || 0) + 10000;
       }
     });
 
-    // Sort languages by frequency
-    const sortedLanguages = Object.entries(languageCounts)
+    // 3. Determine Top Stack
+    const sortedLanguages = Object.entries(languageMap)
       .sort(([, a], [, b]) => b - a)
       .map(([lang]) => lang);
 
-    const topStack = sortedLanguages.slice(0, 10); // Top 10 languages
+    const topStack = sortedLanguages.slice(0, 15); // Top 15 languages
 
-    // 3. Infer Role
-    const frontendLangs = ['JavaScript', 'TypeScript', 'HTML', 'CSS', 'Vue', 'Svelte', 'Dart', 'Swift', 'Kotlin', 'Objective-C'];
-    const backendLangs = ['Python', 'Java', 'Go', 'Ruby', 'PHP', 'C#', 'C++', 'Rust', 'Shell', 'C'];
+    // 4. Advanced Role Inference
+    const DOMAINS = {
+      Frontend: {
+        langs: ['JavaScript', 'TypeScript', 'HTML', 'CSS', 'SASS', 'SCSS', 'Less', 'Vue', 'Svelte', 'CoffeeScript'],
+        score: 0
+      },
+      Backend: {
+        langs: ['Java', 'PHP', 'Ruby', 'C#', 'Go', 'Rust', 'Elixir', 'Perl', 'Scala'],
+        score: 0
+      },
+      Mobile: {
+        langs: ['Swift', 'Kotlin', 'Dart', 'Objective-C', 'React Native', 'Flutter'], // React Native isn't a lang but appears in topics sometimes, sticking to langs for now
+        score: 0
+      },
+      Data: {
+        langs: ['Python', 'R', 'Jupyter Notebook', 'MATLAB', 'Julia', 'SQL'],
+        score: 0
+      },
+      DevOps: {
+        langs: ['Shell', 'HCL', 'Dockerfile', 'Makefile', 'PowerShell'],
+        score: 0
+      },
+      Systems: {
+        langs: ['C', 'C++', 'Assembly', 'VHDL'],
+        score: 0
+      }
+    };
 
-    let frontendScore = 0;
-    let backendScore = 0;
+    // Calculate Domain Scores (Weighted by rank in stack)
+    // Top language gets more points than 10th language
+    topStack.forEach((lang, index) => {
+      const rankWeight = 15 - index; // 15 points for #1, 1 for #15
 
-    topStack.forEach(lang => {
-      if (frontendLangs.includes(lang)) frontendScore++;
-      if (backendLangs.includes(lang)) backendScore++;
+      // Special Handling: JavaScript/TypeScript/Python are versatile
+      if (lang === 'JavaScript' || lang === 'TypeScript') {
+        // Assume 70% Frontend, 30% Backend (Node.js)
+        DOMAINS.Frontend.score += rankWeight * 0.7;
+        DOMAINS.Backend.score += rankWeight * 0.3;
+      } else if (lang === 'Python') {
+        // Assume 60% Data, 40% Backend
+        DOMAINS.Data.score += rankWeight * 0.6;
+        DOMAINS.Backend.score += rankWeight * 0.4;
+      } else {
+        // Check precise lists
+        for (const [domain, data] of Object.entries(DOMAINS)) {
+          if (data.langs.includes(lang)) {
+            data.score += rankWeight;
+          }
+        }
+      }
     });
 
-    let role = 'Fullstack Developer';
-    if (frontendScore > backendScore * 1.5) role = 'Frontend Developer';
-    else if (backendScore > frontendScore * 1.5) role = 'Backend Developer';
+    // Find Logic
+    const sortedDomains = Object.entries(DOMAINS)
+      .sort(([, a], [, b]) => b.score - a.score);
 
-    if (topStack.length === 0) role = 'Developer'; // Fallback
+    const primaryDomain = sortedDomains[0];   // e.g. ["Frontend", { score: 45 }]
+    const secondaryDomain = sortedDomains[1]; // e.g. ["Backend", { score: 30 }]
 
-    // 4. Update User
-    const updatedUser = await prisma.user.update({
+    let finalRole = 'Developer';
+
+    if (primaryDomain[1].score > 0) {
+      if (secondaryDomain[1].score > primaryDomain[1].score * 0.6) {
+        // Mixed Role
+        if ((primaryDomain[0] === 'Frontend' && secondaryDomain[0] === 'Backend') ||
+          (primaryDomain[0] === 'Backend' && secondaryDomain[0] === 'Frontend')) {
+          finalRole = 'Fullstack Developer';
+        } else {
+          finalRole = `${primaryDomain[0]} & ${secondaryDomain[0]} Developer`;
+        }
+      } else {
+        // Strong Primary
+        switch (primaryDomain[0]) {
+          case 'Data': finalRole = 'Data Scientist/Engineer'; break;
+          case 'Mobile': finalRole = 'Mobile App Developer'; break;
+          case 'DevOps': finalRole = 'DevOps Engineer'; break;
+          case 'Systems': finalRole = 'Systems Engineer'; break;
+          default: finalRole = `${primaryDomain[0]} Developer`;
+        }
+      }
+    }
+
+    // 5. Generate Explanation Metadata
+    const totalBytes = Object.values(languageMap).reduce((a, b) => a + b, 0) || 1;
+    const languageBreakdown = Object.entries(languageMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, bytes]) => ({
+        name,
+        percentage: Math.round((bytes / totalBytes) * 100)
+      }));
+
+    const domainAnalysis = Object.entries(DOMAINS)
+      .filter(([, data]) => data.score > 0)
+      .sort(([, a], [, b]) => b.score - a.score)
+      .map(([name, data]) => ({
+        name,
+        score: Math.round(data.score)
+      }));
+
+    const roleAnalysis = {
+      languages: languageBreakdown,
+      domains: domainAnalysis,
+      reason: `${primaryDomain[0]}-heavy profile detected with over ${languageBreakdown[0]?.percentage || 0}% focus on ${languageBreakdown[0]?.name || 'unknown languages'}.`
+    };
+
+    // 6. Update User
+    await prisma.user.update({
       where: { id: userId },
       data: {
-        techStack: topStack,
-        inferredRole: role
+        techStack: topStack.slice(0, 10),
+        inferredRole: finalRole,
+        roleAnalysis: roleAnalysis
       }
     });
 
     return {
-      techStack: topStack,
-      inferredRole: role
+      techStack: topStack.slice(0, 10),
+      inferredRole: finalRole,
+      roleAnalysis: roleAnalysis
     };
 
   } catch (error) {
@@ -636,3 +1034,72 @@ export const analyzeAndSaveProfile = async (userId, accessToken) => {
   }
 };
 
+
+/**
+ * Fetch the file structure of a repository
+ * @param {string} accessToken - GitHub access token
+ * @param {string} owner - Repo owner
+ * @param {string} repo - Repo name
+ * @returns {Promise<string[]>} List of file paths
+ */
+export const fetchRepoStructure = async (accessToken, owner, repo) => {
+  try {
+    // Determine default branch first
+    const repoInfo = await axios.get(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const defaultBranch = repoInfo.data.default_branch;
+
+    // Fetch the tree recursively
+    const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (response.data && response.data.tree) {
+      // Filter important files and directories (limit depth and exclude node_modules etc)
+      return response.data.tree
+        .filter(item => {
+          const path = item.path;
+          // Exclude common junk
+          if (path.includes('node_modules') || path.includes('.git/') || path.includes('dist/') || path.includes('build/')) return false;
+
+          // Prioritize root files and config folders
+          const depth = path.split('/').length;
+          if (depth > 3) return false; // Max depth 3
+          return true;
+        })
+        .map(item => item.path);
+    }
+    return [];
+  } catch (error) {
+    console.error(`Error fetching repo structure for ${owner}/${repo}:`, error.message);
+    return []; // Graceful degradation
+  }
+};
+
+/**
+ * Fetch PR diff stats (additions/deletions)
+ */
+export const fetchPRChanges = async (accessToken, owner, repo, number) => {
+  try {
+    if (!accessToken) return { additions: 0, deletions: 0, changedFiles: 0 };
+
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${number}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    );
+    return {
+      additions: response.data.additions || 0,
+      deletions: response.data.deletions || 0,
+      changedFiles: response.data.changed_files || 0
+    };
+  } catch (error) {
+    console.warn(`[GITHUB] Error fetching PR diff stats for #${number}:`, error.message);
+    return { additions: 0, deletions: 0, changedFiles: 0 };
+  }
+};

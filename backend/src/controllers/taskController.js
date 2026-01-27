@@ -57,6 +57,7 @@ export const createTask = async (req, res) => {
         description: description || null,
         podId,
         assignedTo: assignedTo || null,
+        originalAssigneeId: assignedTo || null,
         dueAt: dueAt ? new Date(dueAt) : null,
         status: "pending",
       },
@@ -108,6 +109,10 @@ export const updateTaskStatus = async (req, res) => {
       select: {
         id: true,
         podId: true,
+        assignedTo: true,
+        originalAssigneeId: true,
+        dueAt: true,
+        status: true
       },
     });
 
@@ -131,26 +136,86 @@ export const updateTaskStatus = async (req, res) => {
       });
     }
 
+    // Authorization: Only Assignee, Admin, or Maintainer can update
+    const isAssignee = task.assignedTo === userId;
+    const isAdminOrMaintainer = ["admin", "maintainer"].includes(membership.role);
+    const isUnassigned = !task.assignedTo;
+
+    if (!isAssignee && !isAdminOrMaintainer && !isUnassigned) {
+      return res.status(403).json({
+        error: "Only the assigned user or pod admins can update this task."
+      });
+    }
+
     // Update task status
     const updatedTask = await prisma.task.update({
       where: { id },
       data: { status },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        pod: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        user: { select: { id: true, name: true, email: true } },
+        pod: { select: { id: true, name: true } },
       },
     });
+
+    // 🧠 Team Dynamics & Reliability Logic
+    if (status === "done" && task.status !== "done") {
+      const now = new Date();
+
+      // Update Task with completion time
+      await prisma.task.update({
+        where: { id },
+        data: { completedAt: now }
+      });
+
+      // Calculate Metrics
+      const isLate = task.dueAt && now > new Date(task.dueAt);
+      const isRescue = task.originalAssigneeId && task.originalAssigneeId !== userId;
+
+      // Update User Dynamics
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { reliabilityScore: true, dynamicsMetrics: true }
+      });
+
+      let { onTimeRate = 100, rescueCount = 0, missedDeadlines = 0, totalCompleted = 0 } = user.dynamicsMetrics || {};
+
+      totalCompleted++;
+      if (isLate) missedDeadlines++;
+      if (isRescue) rescueCount++;
+
+      // On-time rate calculation
+      onTimeRate = Math.round(((totalCompleted - missedDeadlines) / totalCompleted) * 100);
+
+      // Reliability Score Algorithm: Starts at 100.
+      let newScore = user.reliabilityScore;
+      if (isLate) newScore -= 5;
+      if (isRescue) newScore += 2; // Hero bonus!
+      if (!isLate && !isRescue) newScore += 0.5; // Consistency bonus
+
+      newScore = Math.max(0, Math.min(100, newScore));
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          reliabilityScore: newScore,
+          dynamicsMetrics: {
+            onTimeRate,
+            rescueCount,
+            missedDeadlines,
+            totalCompleted
+          }
+        }
+      });
+
+      // Invalidate AI roadmap
+      await prisma.pod.update({
+        where: { id: task.podId },
+        data: {
+          aiRoadmap: null,
+          roadmapUpdatedAt: null
+        }
+      });
+    }
 
     return res.status(200).json({
       message: "Task status updated successfully 🚀.",

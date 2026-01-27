@@ -1,5 +1,5 @@
 import express from "express";
-import { createPod, getPod, addMember, getPodStats, getUserPods, updatePod, getPodActivities, updateMemberRole, syncPodActivity } from "../controllers/podController.js";
+import { createPod, getPod, addMember, getPodStats, getUserPods, updatePod, getPodActivities, updateMemberRole, syncPodActivity, respondToInvite, leavePod, deletePod } from "../controllers/podController.js";
 import { createTask, getTasksByPod } from "../controllers/taskController.js";
 import { getPodLeaderboard, getPodAchievements } from "../controllers/rewardController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
@@ -17,6 +17,9 @@ router.post("/:id/members", authMiddleware, addMember); // POST /api/pods/:id/me
 router.patch("/:id/members/:memberId", authMiddleware, updateMemberRole); // PATCH /api/pods/:id/members/:memberId
 console.log("[DEBUG] Registering POST /:id/sync");
 router.post("/:id/sync", authMiddleware, syncPodActivity); // POST /api/pods/:id/sync
+router.post("/:id/join", authMiddleware, respondToInvite); // POST /api/pods/:id/join
+router.post("/:id/leave", authMiddleware, leavePod); // POST /api/pods/:id/leave
+router.delete("/:id", authMiddleware, deletePod); // DELETE /api/pods/:id
 
 // Task Routes
 router.post("/:id/tasks", authMiddleware, createTask); // POST /api/pods/:id/tasks

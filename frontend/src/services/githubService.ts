@@ -3,6 +3,11 @@ import { apiRequest } from './api';
 export interface ProfileAnalysis {
     techStack: string[];
     inferredRole: string;
+    roleAnalysis?: {
+        languages: { name: string; percentage: number }[];
+        domains: { name: string; score: number }[];
+        reason: string;
+    };
 }
 
 export const githubService = {

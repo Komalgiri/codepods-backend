@@ -29,10 +29,16 @@ model User {
   githubId       String?      @unique
   githubUsername String?      @unique
   githubToken    String?      // we'll encrypt this
+  githubTokenValid Boolean    @default(true)
   
   // Profile Analysis
   techStack      String[]     @default([])
   inferredRole   String?
+  roleAnalysis   Json?        // Story/reasoning behind the role
+  
+  // Team Dynamics & Reliability
+  reliabilityScore Float      @default(100.0) // 0-100 scale
+  dynamicsMetrics  Json?       // { onTimeRate, rescueCount, missedDeadlines }
 }
 
 //////////////////////////
@@ -49,6 +55,7 @@ model Pod {
   activities  Activity[]
   createdAt        DateTime     @default(now())
   aiRoadmap        Json?        // Cached AI roadmap data
+  projectBrain     Json?        // THE BRAIN: Strategic memory, decisions, and long-term context
   roadmapUpdatedAt DateTime?    // When the roadmap was last generated
 }
 
@@ -57,6 +64,7 @@ model PodMember {
   userId   String
   podId    String
   role     String   // "admin" / "member" / "maintainer"
+  status   String   @default("accepted") // "pending", "accepted", "rejected"
 
   user User @relation(fields: [userId], references: [id])
   pod  Pod  @relation(fields: [podId], references: [id])
@@ -80,6 +88,8 @@ model Task {
 
   createdAt DateTime @default(now())
   dueAt     DateTime?
+  completedAt DateTime?
+  originalAssigneeId String? // To track if someone "rescued" the task
 }
 
 //////////////////////////

@@ -16,6 +16,13 @@ export interface PodMember {
         name: string;
         email: string;
         githubUsername?: string;
+        reliabilityScore?: number;
+        dynamicsMetrics?: {
+            onTimeRate?: number;
+            rescueCount?: number;
+            missedDeadlines?: number;
+            totalCompleted?: number;
+        };
     };
 }
 
@@ -27,6 +34,7 @@ export interface Pod {
     repoName: string | null;
     createdAt: string;
     members: PodMember[];
+    projectBrain?: any;
 }
 
 export interface Task {

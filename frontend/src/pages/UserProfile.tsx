@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
+import { githubService } from '../services/githubService';
+import { FaGithub, FaFire, FaCertificate, FaMedal, FaRocket, FaBug, FaEdit, FaUserPlus } from 'react-icons/fa';
+import { HiOutlineLocationMarker, HiOutlineMail, HiOutlineGlobeAlt, HiTrendingUp, HiUsers, HiLightningBolt, HiChartBar, HiRefresh } from 'react-icons/hi';
 
 interface UserProfileProps {
     embed?: boolean;
@@ -80,7 +83,7 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                                 <h1 className="text-3xl font-bold text-text-primary">{user.name}</h1>
                                 {user.githubId && (
                                     <span className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                                        <FaGithub className="w-3 h-3" />
                                         GitHub Connected
                                     </span>
                                 )}
@@ -89,15 +92,15 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
 
                             <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
                                 <div className="flex items-center gap-2">
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                    <HiOutlineLocationMarker className="w-4 h-4" />
                                     {user.location || 'Remote'}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                    <HiOutlineMail className="w-4 h-4" />
                                     {user.email}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                    <HiOutlineGlobeAlt className="w-4 h-4" />
                                     {user.website || 'codepods.io'}
                                 </div>
                             </div>
@@ -105,11 +108,11 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
 
                         <div className="flex gap-3">
                             <button className="px-6 py-2.5 bg-cyan-500 text-background font-bold rounded-lg hover:bg-cyan-400 transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                                <FaUserPlus className="w-4 h-4" />
                                 Follow
                             </button>
                             <button className="px-6 py-2.5 bg-background-surface border border-background-border font-bold rounded-lg hover:bg-background-border/50 transition-colors flex items-center gap-2">
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                <FaEdit className="w-4 h-4" />
                                 Edit Profile
                             </button>
                         </div>
@@ -118,70 +121,160 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column - Stats & Badges */}
-                    <div className="space-y-6">
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-background-surface border border-background-border rounded-xl p-5">
-                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Total XP</div>
-                                <div className="text-3xl font-bold text-white mb-1">{totalPoints}</div>
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                            {/* Grinding Metrics */}
+                            <div className="bg-background-surface border border-background-border rounded-xl p-5 hover:border-primary/30 transition-colors">
+                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Total XP Earned</div>
+                                <div className="text-3xl font-bold text-white mb-1">{totalPoints.toLocaleString()}</div>
                                 <div className="text-[10px] font-bold text-green-500 flex items-center gap-1">
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                                    Level Up Soon
+                                    <HiTrendingUp className="w-3 h-3" />
+                                    Level Up Imminent
                                 </div>
                             </div>
-                            <div className="bg-background-surface border border-background-border rounded-xl p-5">
-                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Pods Joined</div>
+
+                            <div className="bg-background-surface border border-background-border rounded-xl p-5 hover:border-cyan-500/30 transition-colors">
+                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Active Pods</div>
                                 <div className="text-3xl font-bold text-white mb-1">{pods.length}</div>
                                 <div className="text-[10px] font-bold text-cyan-500 flex items-center gap-1">
-                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                    {pods.length > 0 ? 'Active Member' : 'Join a Pod'}
+                                    <HiUsers className="w-3 h-3" />
+                                    Collaborating
+                                </div>
+                            </div>
+
+                            {/* Reliability & Behavior Metrics */}
+                            <div className="bg-background-surface border border-background-border rounded-xl p-5 relative overflow-hidden group hover:border-primary/50 transition-colors">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-bl-full group-hover:bg-primary/10 transition-colors"></div>
+                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2 relative z-10 flex items-center gap-1.5">
+                                    <HiChartBar className="w-3.5 h-3.5 text-primary" />
+                                    Reliability Score
+                                </div>
+                                <div className="flex items-baseline gap-1 relative z-10">
+                                    <div className="text-3xl font-bold text-white">{Math.round(user.reliabilityScore || 100)}</div>
+                                    <div className="text-xs font-bold text-primary">/100</div>
+                                </div>
+                                <div className="w-full bg-background-border/30 h-1 mt-3 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary transition-all duration-1000 shadow-[0_0_8px_rgba(88,166,154,0.5)]"
+                                        style={{ width: `${user.reliabilityScore || 100}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div className="bg-background-surface border border-background-border rounded-xl p-5 relative overflow-hidden group hover:border-orange-500/30 transition-colors">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/5 rounded-bl-full group-hover:bg-orange-500/10 transition-colors"></div>
+                                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2 relative z-10 flex items-center gap-1.5">
+                                    <FaFire className="w-3.5 h-3.5 text-orange-500" />
+                                    Team Impact
+                                </div>
+                                <div className="flex items-baseline gap-2 relative z-10">
+                                    <div className="text-3xl font-bold text-white">{(user.dynamicsMetrics?.rescueCount || 0)}</div>
+                                    <div className="text-[10px] font-bold text-orange-500 uppercase">Rescues</div>
+                                </div>
+                                <div className="text-[10px] font-bold text-text-secondary mt-3 flex items-center justify-between">
+                                    <span>ON-TIME RATE</span>
+                                    <span className="text-primary">{(user.dynamicsMetrics?.onTimeRate || 100)}%</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Core Stack */}
+                        {/* Behavior Metrics Card */}
+                        <div className="bg-background-surface/40 border border-background-border/60 rounded-xl p-4 space-y-4">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1">
+                                    <div className="text-[9px] font-bold text-text-secondary uppercase tracking-widest mb-1">Consistency</div>
+                                    <div className="flex gap-1">
+                                        {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                                            <div key={i} className={`flex-1 h-3 rounded-sm ${i <= ((user.dynamicsMetrics?.onTimeRate || 100) / 14) ? 'bg-primary' : 'bg-background-border'}`}></div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="h-8 w-px bg-background-border/50"></div>
+                                <div className="flex-1">
+                                    <div className="text-[9px] font-bold text-text-secondary uppercase tracking-widest mb-1">Team Player</div>
+                                    <div className="text-sm font-bold text-text-primary capitalize">
+                                        {(user.dynamicsMetrics?.rescueCount || 0) > 5 ? 'Elite Guardian' : (user.dynamicsMetrics?.rescueCount || 0) > 0 ? 'Project Rescuer' : 'Collaborator'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* AI Insights Layer */}
                         <div className="bg-background-surface border border-background-border rounded-xl p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-text-primary">Core Stack</h3>
-                                <svg className="w-4 h-4 text-text-secondary cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                                <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
+                                    <HiLightningBolt className="w-4 h-4 text-primary" />
+                                    AI Profile Insights
+                                </h3>
+                                <button
+                                    onClick={async () => {
+                                        setIsLoading(true);
+                                        try {
+                                            await githubService.syncActivity();
+                                            const data = await userService.getProfile();
+                                            setProfileData(data);
+                                        } catch (e) {
+                                            console.error("Manual refresh failed", e);
+                                        } finally {
+                                            setIsLoading(false);
+                                        }
+                                    }}
+                                    className="p-1 hover:bg-primary/10 text-text-secondary hover:text-primary rounded-md transition-colors"
+                                    title="Refresh AI Insights"
+                                >
+                                    <HiRefresh className="w-3 h-3" />
+                                </button>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                {['React', 'Rust', 'TypeScript', 'Go', 'Node.js', 'Docker', 'GraphQL'].map(tech => (
-                                    <span key={tech} className="px-3 py-1.5 bg-background-border/20 border border-background-border rounded-full text-xs font-bold text-text-primary flex items-center gap-1.5 hover:border-primary/50 transition-colors cursor-default">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${tech === 'React' || tech === 'TypeScript' ? 'bg-blue-500' :
-                                            tech === 'Rust' ? 'bg-orange-500' :
-                                                tech === 'Node.js' ? 'bg-green-500' :
-                                                    tech === 'GraphQL' ? 'bg-pink-500' :
-                                                        tech === 'Go' ? 'bg-cyan-500' :
-                                                            'bg-gray-500'
-                                            }`}></span>
-                                        {tech}
-                                    </span>
-                                ))}
-                                <span className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-xs font-bold text-primary cursor-pointer hover:bg-primary/20">
-                                    + 12 more
-                                </span>
-                            </div>
+
+                            {user.roleAnalysis ? (
+                                <div className="space-y-4">
+                                    <p className="text-xs text-text-secondary leading-relaxed italic border-l-2 border-primary/30 pl-3">
+                                        "{user.roleAnalysis.reason}"
+                                    </p>
+                                    <div className="space-y-3">
+                                        {user.roleAnalysis.languages.map((lang: any) => (
+                                            <div key={lang.name} className="space-y-1">
+                                                <div className="flex justify-between items-center text-[10px] font-bold">
+                                                    <span className="text-text-primary">{lang.name}</span>
+                                                    <span className="text-primary">{lang.percentage}%</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-background-border/30 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-primary" style={{ width: `${lang.percentage}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {(user.techStack || ['React', 'Node.js', 'TypeScript']).map((tech: string) => (
+                                        <span key={tech} className="px-3 py-1 bg-background-border/20 border border-background-border rounded-full text-[10px] font-bold text-text-primary">
+                                            {tech}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Earned Badges */}
                         <div className="bg-background-surface border border-background-border rounded-xl p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-text-primary">Earned Badges</h3>
+                                <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Earned Badges</h3>
                                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">{badgeCount}</span>
                             </div>
-                            <div className="flex gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 hover:scale-105 transition-transform cursor-pointer" title="Gold Contributor">
-                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+                            <div className="flex flex-wrap gap-4">
+                                <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500" title="Gold Contributor">
+                                    <FaMedal className="w-5 h-5" />
                                 </div>
-                                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 hover:scale-105 transition-transform cursor-pointer" title="Mentor">
-                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500" title="Mentor">
+                                    <FaCertificate className="w-5 h-5" />
                                 </div>
-                                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-500 hover:scale-105 transition-transform cursor-pointer" title="Rocket Ship">
-                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.49-.55 1.9-2.12 3.5-2.25 1.5.21 4 1.5 4 1.5s2.5-3.5 3-7c.5-3.5-3-5.5-3-5.5s-2 3.5-5.5 3c-3.5-.5-7 3-7 3s1.29 2.5 1.5 4c-.13 1.6-1.74 3-2.25 3.5z"></path></svg>
+                                <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-500" title="Rocket Ship">
+                                    <FaRocket className="w-5 h-5" />
                                 </div>
-                                <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:scale-105 transition-transform cursor-pointer" title="Bug Hunter">
-                                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9 9 9 0 0 0-9 9 9 9 0 0 0 9 9z"></path><path d="M12 11h.01"></path><path d="M12 15h.01"></path><path d="M9 13h.01"></path><path d="M15 13h.01"></path></svg>
+                                <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500" title="Bug Hunter">
+                                    <FaBug className="w-5 h-5" />
                                 </div>
                             </div>
                         </div>
@@ -210,30 +303,42 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                                                     activity.type === 'repo_created' ? 'border-purple-500/50 text-purple-500' :
                                                         activity.type === 'pr_opened' ? 'border-blue-500/50 text-blue-500' :
                                                             activity.type === 'pr_merged' ? 'border-green-500/50 text-green-500' :
-                                                                'border-background-border text-text-secondary'
-                                                    } flex items-center justify-center z-10 shadow-sm`}>
+                                                                activity.type === 'issue_closed' ? 'border-yellow-500/50 text-yellow-500' :
+                                                                    activity.type === 'review_comment' ? 'border-purple-400/50 text-purple-400' :
+                                                                        'border-background-border text-text-secondary'
+                                                    } flex items-center justify-center z-10 shadow-sm transition-transform hover:scale-110`}>
                                                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                         {activity.type === 'commit' ? (
                                                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                                                         ) : activity.type.startsWith('pr') ? (
                                                             <path d="M15 14h5v-2h-5v-6h2v-2h-6v2h2v4h-6v-4h2v-2h-6v2h2v6h-5v2h5v6h-2v2h6v-2h-2v-4h6v4h-2v2h6v-2h-2v-6z" />
+                                                        ) : activity.type === 'issue_closed' ? (
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        ) : activity.type === 'review_comment' ? (
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                                                         ) : (
                                                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                                                         )}
                                                     </svg>
                                                 </div>
                                                 <div className="flex flex-col gap-1">
-                                                    <h4 className="font-bold text-text-primary">
+                                                    <h4 className="font-bold text-text-primary text-sm">
                                                         {activity.type === 'commit' ? `Committed to ${activity.meta?.repoName || 'repository'}` :
                                                             activity.type === 'repo_created' ? `Created repository ${activity.meta?.repoName}` :
                                                                 activity.type === 'pr_opened' ? `Opened PR #${activity.meta?.prNumber} in ${activity.meta?.repoName}` :
                                                                     activity.type === 'pr_merged' ? `Merged PR #${activity.meta?.prNumber} in ${activity.meta?.repoName}` :
-                                                                        'User Activity'}
+                                                                        activity.type === 'review_comment' ? `Reviewed code in ${activity.meta?.repoName}` :
+                                                                            activity.type === 'issue_closed' ? `Closed Issue #${activity.meta?.issueNumber} in ${activity.meta?.repoName}` :
+                                                                                'User Activity'}
                                                     </h4>
-                                                    <p className="text-sm text-text-secondary">{activity.meta?.message || 'Activity synchronized from GitHub.'}</p>
+                                                    <p className="text-xs text-text-secondary line-clamp-2">{activity.meta?.message || 'Activity synchronized from GitHub.'}</p>
                                                     <div className="flex items-center gap-3 mt-1">
-                                                        <span className="text-xs text-text-secondary">{new Date(activity.createdAt).toLocaleDateString()}</span>
-                                                        <span className="text-[10px] font-bold bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded uppercase">{activity.type}</span>
+                                                        <span className="text-[10px] text-text-secondary">{new Date(activity.createdAt).toLocaleDateString()}</span>
+                                                        <div className="flex items-center gap-1.5 bg-background-border/20 px-2 py-0.5 rounded border border-background-border/50">
+                                                            <span className="text-[9px] font-bold text-primary">+{activity.value} XP</span>
+                                                            <span className="w-1 h-1 rounded-full bg-text-secondary/30"></span>
+                                                            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-tight">{activity.type.replace('_', ' ')}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </li>
@@ -241,34 +346,29 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                                     )}
                                 </ol>
                             </div>
-                            <div className="p-4 border-t border-background-border text-center">
-                                <button className="text-sm font-bold text-cyan-500 hover:text-cyan-400 transition-colors">View All Contributions</button>
-                            </div>
                         </div>
 
                         {/* Code Graph */}
                         <div className="bg-background-surface border border-background-border rounded-xl p-6">
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="font-bold text-text-primary">Code Graph</h3>
+                                <h3 className="font-bold text-text-primary">Impact Velocity</h3>
                                 <div className="flex gap-2 items-center text-[10px] text-text-secondary font-bold uppercase">
-                                    <span>Less</span>
+                                    <span>Lower</span>
                                     <div className="flex gap-1">
                                         <div className="w-3 h-3 bg-background-border/50 rounded-sm"></div>
-                                        <div className="w-3 h-3 bg-cyan-900 rounded-sm"></div>
-                                        <div className="w-3 h-3 bg-cyan-700 rounded-sm"></div>
-                                        <div className="w-3 h-3 bg-cyan-500 rounded-sm"></div>
-                                        <div className="w-3 h-3 bg-cyan-300 rounded-sm"></div>
+                                        <div className="w-3 h-3 bg-primary/40 rounded-sm"></div>
+                                        <div className="w-3 h-3 bg-primary/70 rounded-sm"></div>
+                                        <div className="w-3 h-3 bg-primary rounded-sm"></div>
                                     </div>
-                                    <span>More</span>
+                                    <span>Higher</span>
                                 </div>
                             </div>
                             <div className="flex items-end justify-between h-32 gap-4">
-                                {/* Simple Bar Chart Mock */}
-                                {['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE'].map((month, i) => (
+                                {['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'].map((month, i) => (
                                     <div key={month} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
                                         <div className="w-full flex items-end justify-center gap-1 h-full">
-                                            <div className={`w-3 rounded-t-sm transition-all group-hover:bg-cyan-400 ${i % 2 === 0 ? 'h-1/3 bg-cyan-900' : 'h-1/2 bg-cyan-700'}`}></div>
-                                            <div className={`w-3 rounded-t-sm transition-all group-hover:bg-cyan-300 ${i % 2 === 0 ? 'h-2/3 bg-cyan-500' : 'h-full bg-cyan-300'}`}></div>
+                                            <div className={`w-3 rounded-t-sm transition-all group-hover:bg-primary/80 ${i % 2 === 0 ? 'h-1/3 bg-primary/20' : 'h-1/2 bg-primary/40'}`}></div>
+                                            <div className={`w-3 rounded-t-sm transition-all group-hover:bg-primary ${i % 2 === 0 ? 'h-2/3 bg-primary/60' : 'h-full bg-primary'}`}></div>
                                         </div>
                                         <span className="text-[9px] font-bold text-text-secondary uppercase">{month}</span>
                                     </div>

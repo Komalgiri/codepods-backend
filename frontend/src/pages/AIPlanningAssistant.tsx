@@ -12,6 +12,8 @@ const AIPlanningAssistant = () => {
     const [teamAllocation, setTeamAllocation] = useState<any[]>([]);
     const [projectStage, setProjectStage] = useState<string>("Analyzing...");
     const [stats, setStats] = useState<{ confidence: number; duration: string; efficiency: string } | null>(null);
+    const [brain, setBrain] = useState<any>(null);
+    const [meta, setMeta] = useState<{ cached: boolean; daysSinceGeneration: number; daysUntilRegeneration: number } | null>(null);
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [loading, setLoading] = useState(true);
     const [syncedTasks, setSyncedTasks] = useState<Set<string>>(new Set());
@@ -45,6 +47,8 @@ const AIPlanningAssistant = () => {
                             duration: data.duration,
                             efficiency: data.efficiency
                         });
+                        setMeta(data.meta || null);
+                        setBrain(data.projectBrain || null);
                         setLoading(false);
                         return;
                     }
@@ -68,6 +72,8 @@ const AIPlanningAssistant = () => {
                 duration: response.duration,
                 efficiency: response.efficiency
             });
+            setMeta(response.meta || null);
+            setBrain(response.projectBrain || null);
 
         } catch (error) {
             console.error("Failed to fetch AI plan", error);
@@ -182,13 +188,20 @@ const AIPlanningAssistant = () => {
                             <svg className="w-5 h-5 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="3"></circle><line x1="12" y1="8" x2="12" y2="21"></line><line x1="8" y1="13" x2="16" y2="13"></line></svg>
                             <h3>Development Timeline</h3>
                         </div>
-                        <button
-                            onClick={handleRegenerateNodes}
-                            disabled={isRegenerating}
-                            className="text-xs font-bold text-cyan-500 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
-                        >
-                            {isRegenerating ? 'Optimizing...' : 'Regenerate Nodes'}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            {meta && meta.daysUntilRegeneration > 0 && (
+                                <span className="text-[10px] font-bold text-text-secondary bg-background-border/50 px-2 py-1 rounded">
+                                    Refreshes in {meta.daysUntilRegeneration} days
+                                </span>
+                            )}
+                            <button
+                                onClick={handleRegenerateNodes}
+                                disabled={isRegenerating}
+                                className="text-xs font-bold text-cyan-500 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
+                            >
+                                {isRegenerating ? 'Optimizing...' : 'Regenerate Nodes'}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="relative pl-4 space-y-12 before:absolute before:left-[23px] before:top-4 before:bottom-4 before:w-0.5 before:bg-background-border">
@@ -293,6 +306,33 @@ const AIPlanningAssistant = () => {
                         </div>
                     </div>
 
+                    {brain && (
+                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4">
+                            <div className="flex items-center gap-2 text-ai-start">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" /><path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z" /></svg>
+                                <h3 className="text-sm font-bold uppercase tracking-wider">Project Memory</h3>
+                            </div>
+                            <div className="p-3 bg-background/50 rounded-xl border border-background-border/50">
+                                <p className="text-[11px] text-text-secondary leading-relaxed italic line-clamp-4">
+                                    "{brain.summary}"
+                                </p>
+                            </div>
+                            {brain.decisions?.length > 0 && (
+                                <div className="space-y-2">
+                                    <h4 className="text-[10px] font-bold text-text-secondary uppercase">Decisions Made</h4>
+                                    <div className="flex flex-col gap-1.5">
+                                        {brain.decisions.slice(0, 3).map((d: string, i: number) => (
+                                            <div key={i} className="flex gap-2 items-start text-[10px] text-text-primary">
+                                                <span className="text-ai-start mt-0.5">◈</span>
+                                                <span>{d}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex-1 overflow-y-auto">
                         <div className="flex items-center gap-2 mb-6 sticky top-0 bg-background-surface py-1">
                             <svg className="w-5 h-5 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -303,8 +343,8 @@ const AIPlanningAssistant = () => {
                             {teamAllocation.length > 0 ? teamAllocation.map((member) => (
                                 <div key={member.id} className="bg-background/50 border border-background-border rounded-xl p-3">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{member.role}</span>
-                                        <svg className="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider truncate max-w-[150px]" title={member.role}>{member.role}</span>
+                                        <svg className="w-4 h-4 text-cyan-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} className="w-8 h-8 rounded-full border border-background-border bg-background-surface" />
