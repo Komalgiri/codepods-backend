@@ -216,9 +216,108 @@ export const getPodLeaderboard = async (req, res) => {
     if (activeMemberCount < 3) validity.reasons.push("Minimum 3 ACTIVE (Accepted) members required for competitive ranking");
     if (podActivityCount < 10) validity.reasons.push(`Insufficient recent activity (${podActivityCount}/10 events in 30 days)`);
 
+    // POD HEALTH CALCULATION (0-100)
+    // ---------------------------------
+    const podTasks = await prisma.task.findMany({ where: { podId } });
+    const completedTasks = podTasks.filter(t => t.status === 'done').length;
+    const taskCompletionRate = podTasks.length > 0 ? (completedTasks / podTasks.length) : 0;
+
+    // Calculation Weights: 
+    // Velocity: 40% (Target 20 activities/month)
+    // Stability: 30% (Accepted members vs Total)
+    // Efficiency: 30% (Task Completion)
+
+    const velocityScore = Math.min(40, (podActivityCount / 20) * 40);
+    const stabilityScore = Math.min(30, (activeMemberCount / Math.max(1, members.length)) * 30);
+    const efficiencyScore = Math.min(30, taskCompletionRate * 30);
+
+    const totalHealth = Math.round(velocityScore + stabilityScore + efficiencyScore);
+
+    // Status Tag Logic
+    let healthTag = "Standard";
+    if (totalHealth > 85) healthTag = "Excellent";
+    else if (totalHealth > 65) healthTag = "Good";
+    else if (totalHealth > 40) healthTag = "Neutral";
+    else healthTag = "Critical";
+
+    const health = {
+      score: totalHealth,
+      tag: healthTag,
+      metrics: {
+        velocity: Math.round((velocityScore / 40) * 100),
+        stability: Math.round((stabilityScore / 30) * 100),
+        efficiency: Math.round((efficiencyScore / 30) * 100)
+      },
+      trends: []
+    };
+
+    if (podActivityCount > 15) health.trends.push("Highly Active");
+    if (taskCompletionRate > 0.7) health.trends.push("Burndown Active");
+    if (activeMemberCount < 2) health.trends.push("Team Bottleneck");
+    if (podActivityCount < 5) health.trends.push("Low Engagement");
+
+    // ⚡ QUICK SOLVES (Actionable solutions)
+    const quickSolves = [];
+    if (activeMemberCount < 3) {
+      quickSolves.push({
+        id: 'recruit',
+        title: 'Recruit Team',
+        action: 'Invite 3+ members and ensure they ACCEPT to unlock full XP.',
+        priority: 'high'
+      });
+    } else if (activeMemberCount < members.length) {
+      quickSolves.push({
+        id: 'activate',
+        title: 'Activate Pending',
+        action: 'Your teammates have pending invites. Remind them to accept!',
+        priority: 'medium'
+      });
+    }
+
+    if (podActivityCount < 20) {
+      const needed = 20 - podActivityCount;
+      quickSolves.push({
+        id: 'velocity',
+        title: 'Boost Velocity',
+        action: `Push ${Math.min(5, needed)}+ commits or open a PR to improve pod vitals.`,
+        priority: podActivityCount < 10 ? 'high' : 'medium'
+      });
+    }
+
+    if (taskCompletionRate < 0.3 && podTasks.length > 0) {
+      quickSolves.push({
+        id: 'cleanup',
+        title: 'Task Cleanup',
+        action: 'Complete or archive stale tasks to improve efficiency score.',
+        priority: 'medium'
+      });
+    }
+
+    if (health.metrics.stability < 100) {
+      quickSolves.push({
+        id: 'verify',
+        title: 'Verify IDs',
+        action: 'Ensure all members have verified their GitHub usernames in profile.',
+        priority: 'low'
+      });
+    }
+
+    // ENSURE SUGGESTIONS FOR CRITICAL HEALTH
+    if (totalHealth < 50 && quickSolves.length === 0) {
+      quickSolves.push({
+        id: 'strategic-audit',
+        title: 'Strategic Audit',
+        action: 'Your pod health is low despite active members. Review roadmap and task alignment.',
+        priority: 'medium'
+      });
+    }
+
+    health.quickSolves = quickSolves;
+
     return res.status(200).json({
       leaderboard,
-      validity
+      validity,
+      health
     });
   } catch (error) {
     console.error("Error fetching leaderboard:", error);

@@ -73,6 +73,17 @@ export interface PodLeaderboardResponse {
         activeMemberCount: number;
         podActivityCount: number;
     };
+    health: {
+        score: number;
+        tag: string;
+        metrics: {
+            velocity: number;
+            stability: number;
+            efficiency: number;
+        };
+        trends: string[];
+        quickSolves: { id: string; title: string; action: string; priority: 'high' | 'medium' | 'low' }[];
+    };
 }
 
 export interface PodStats {

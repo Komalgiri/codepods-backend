@@ -8,6 +8,7 @@ const PodRewards = () => {
     const [leaderboard, setLeaderboard] = useState<LeaderboardMember[]>([]);
     const [achievements, setAchievements] = useState<Achievement[]>([]);
     const [validity, setValidity] = useState<any>(null);
+    const [health, setHealth] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -20,6 +21,7 @@ const PodRewards = () => {
                 ]);
                 setLeaderboard(lbResponse.leaderboard);
                 setValidity(lbResponse.validity);
+                setHealth(lbResponse.health);
                 setAchievements(achResponse.achievements);
             } catch (error) {
                 console.error("Failed to fetch rewards data", error);
@@ -84,26 +86,67 @@ const PodRewards = () => {
                     </div>
                 </div>
 
-                {/* Team Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-6 relative overflow-hidden">
+                {/* Pod Health & Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    {health && (
+                        <div className="md:col-span-2 bg-background-surface/40 backdrop-blur-md border border-background-border rounded-2xl p-6 relative group hover:border-primary/50 transition-all duration-500 overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 -mr-16 -mt-16 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+
+                            <div className="flex items-center justify-between mb-4 relative z-10">
+                                <div>
+                                    <h3 className="text-sm font-bold text-text-secondary uppercase tracking-widest">Pod Health Index</h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${health.tag === 'Excellent' ? 'bg-success' :
+                                                health.tag === 'Good' ? 'bg-cyan-500' :
+                                                    health.tag === 'Neutral' ? 'bg-yellow-500' : 'bg-red-500'
+                                            }`}></div>
+                                        <span className={`text-xl font-black italic uppercase ${health.tag === 'Excellent' ? 'text-success' :
+                                                health.tag === 'Good' ? 'text-cyan-500' :
+                                                    health.tag === 'Neutral' ? 'text-yellow-500' : 'text-red-500'
+                                            }`}>{health.tag}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-4xl font-black text-white">{health.score}<span className="text-sm opacity-50">%</span></div>
+                                    <div className="text-[10px] text-text-secondary uppercase font-bold tracking-tighter">Live Vital Score</div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
+                                <div className="p-2 rounded-xl bg-background/40 border border-background-border/50 text-center transition-transform hover:scale-105">
+                                    <div className="text-xs font-bold text-white mb-0.5">{health.metrics.velocity}%</div>
+                                    <div className="text-[10px] text-text-secondary uppercase font-medium leading-none">Velocity</div>
+                                </div>
+                                <div className="p-2 rounded-xl bg-background/40 border border-background-border/50 text-center transition-transform hover:scale-105">
+                                    <div className="text-xs font-bold text-white mb-0.5">{health.metrics.stability}%</div>
+                                    <div className="text-[10px] text-text-secondary uppercase font-medium leading-none">Stability</div>
+                                </div>
+                                <div className="p-2 rounded-xl bg-background/40 border border-background-border/50 text-center transition-transform hover:scale-105">
+                                    <div className="text-xs font-bold text-white mb-0.5">{health.metrics.efficiency}%</div>
+                                    <div className="text-[10px] text-text-secondary uppercase font-medium leading-none">Efficiency</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                {health.trends.map((trend: string, i: number) => (
+                                    <span key={i} className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-bold uppercase tracking-wider">
+                                        {trend}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-2xl p-6 relative overflow-hidden group hover:scale-[1.02] transition-transform">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">Total Team XP</span>
                             <svg className="w-5 h-5 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
                         </div>
-                        <div className="text-3xl font-bold text-white mb-1">{totalTeamXP.toLocaleString()}</div>
+                        <div className="text-3xl font-bold text-white mb-1 group-hover:text-yellow-500 transition-colors">{totalTeamXP.toLocaleString()}</div>
                         <div className="text-xs text-text-secondary">Tracked across all activities</div>
                     </div>
-                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
+                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 relative overflow-hidden group hover:scale-[1.02] transition-transform">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Active Members</span>
-                        </div>
-                        <div className="text-3xl font-bold text-white mb-1">{leaderboard.length}</div>
-                        <div className="text-xs text-cyan-500">Contributing daily</div>
-                    </div>
-                    <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden">
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Milestones Met</span>
+                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Milestones Meta</span>
                         </div>
                         <div className="text-3xl font-bold text-white mb-1">{achievements.length}</div>
                         <div className="text-xs text-green-500 font-bold">New records!</div>

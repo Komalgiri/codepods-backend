@@ -34,16 +34,19 @@ const PodOverview = () => {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
     const [verifyGithubUsername, setVerifyGithubUsername] = useState('');
+    const [health, setHealth] = useState<any>(null);
 
     const refreshData = async () => {
         if (!podId) return;
         try {
-            const [podResponse, statsResponse] = await Promise.all([
+            const [podResponse, statsResponse, lbResponse] = await Promise.all([
                 podService.getPod(podId),
-                podService.getPodStats(podId)
+                podService.getPodStats(podId),
+                podService.getPodLeaderboard(podId)
             ]);
             setPod(podResponse.pod);
             setStats(statsResponse.stats);
+            setHealth(lbResponse.health);
         } catch (error) {
             console.error("Failed to fetch pod data", error);
         }
@@ -432,27 +435,66 @@ const PodOverview = () => {
                                 </div>
                             </div>
 
-                            {/* Pod Health */}
-                            <div className="lg:col-span-1 bg-background-surface border border-background-border rounded-2xl p-6 shadow-card flex flex-col items-center justify-center relative">
-                                <h2 className="text-sm font-bold text-text-primary mb-6">Pod Health</h2>
-                                <div className="relative w-40 h-40 flex items-center justify-center mb-6">
-                                    <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                                        <circle cx="50" cy="50" r="40" fill="none" stroke="#1F2937" strokeWidth="8" />
-                                        <circle cx="50" cy="50" r="40" fill="none" stroke="#58A69A" strokeWidth="8"
-                                            strokeDasharray="251.2"
-                                            strokeDashoffset={251.2 - (251.2 * (stats?.health || 0)) / 100}
-                                            strokeLinecap="round" />
-                                    </svg>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-3xl font-bold text-text-primary">{stats?.health || 0}%</span>
-                                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">COMPLETED</span>
+                            {/* Enhanced Pod Health Index */}
+                            <div className="lg:col-span-1 bg-background-surface border border-background-border rounded-2xl p-6 shadow-card flex flex-col relative group hover:border-primary/40 transition-all">
+                                <h2 className="text-sm font-bold text-text-primary mb-6 flex items-center gap-2">
+                                    <HiChartBar className="w-4 h-4 text-primary" />
+                                    Pod Health Index
+                                </h2>
+
+                                <div className="flex flex-col items-center mb-6">
+                                    <div className="relative w-36 h-36 flex items-center justify-center">
+                                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="8" />
+                                            <circle cx="50" cy="50" r="42" fill="none" stroke={
+                                                (health?.score || 0) > 80 ? '#58A69A' :
+                                                    (health?.score || 0) > 50 ? '#EAB308' : '#EF4444'
+                                            } strokeWidth="8"
+                                                strokeDasharray="263.8"
+                                                strokeDashoffset={263.8 - (263.8 * (health?.score || 0)) / 100}
+                                                strokeLinecap="round"
+                                                className="transition-all duration-1000"
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span className="text-4xl font-black text-text-primary">{health?.score || 0}</span>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${health?.tag === 'Excellent' ? 'bg-success/10 text-success' :
+                                                health?.tag === 'Good' ? 'bg-cyan-500/10 text-cyan-500' :
+                                                    'bg-red-500/10 text-red-500'
+                                                }`}>{health?.tag || 'NA'}</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="w-full space-y-3">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-text-secondary">Task Completion</span>
-                                        <span className="font-bold text-primary">{stats?.health || 0}%</span>
+                                {/* Quick Solves Section */}
+                                <div className="w-full space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">⚡ AI Quick Solves</h3>
+                                    </div>
+
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                        {health?.quickSolves && health.quickSolves.length > 0 ? (
+                                            health.quickSolves.map((solve: any) => (
+                                                <div key={solve.id} className="p-2.5 rounded-xl bg-background/40 border border-background-border/50 group/solve hover:border-primary/30 transition-all">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="text-[11px] font-bold text-text-primary">{solve.title}</span>
+                                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${solve.priority === 'high' ? 'bg-red-500/10 text-red-500' : 'bg-yellow-500/10 text-yellow-500'
+                                                            }`}>
+                                                            {solve.priority}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] text-text-secondary leading-tight">{solve.action}</p>
+                                                </div>
+                                            ))
+                                        ) : (health?.score || 0) > 80 ? (
+                                            <div className="text-center py-4 bg-success/5 border border-success/20 rounded-xl">
+                                                <p className="text-[10px] text-success font-bold italic">Pod is perfectly optimized! ✨</p>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 bg-background/20 border border-background-border rounded-xl">
+                                                <p className="text-[10px] text-text-secondary italic">Performing strategic analysis...</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

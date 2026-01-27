@@ -42,8 +42,22 @@ router.get("/callback", async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    const { id, login } = userResponse.data;
+    const { id, login, name: githubName, email: githubPublicEmail } = userResponse.data;
     const githubId = String(id);
+
+    // Also fetch private emails if needed, to match by email
+    let primaryEmail = githubPublicEmail;
+    if (!primaryEmail) {
+      try {
+        const emailsResponse = await axios.get("https://api.github.com/user/emails", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const primary = emailsResponse.data.find(e => e.primary && e.verified);
+        if (primary) primaryEmail = primary.email;
+      } catch (e) {
+        console.error("Failed to fetch GitHub emails:", e.message);
+      }
+    }
 
     let user;
 
@@ -53,17 +67,23 @@ router.get("/callback", async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.id;
 
+        // Fetch current user details
+        const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (!currentUser) {
+          throw new Error("User from token not found");
+        }
+
         // Check if this GitHub ID is ALREADY linked to a DIFFERENT account
         const existingLinkedUser = await prisma.user.findUnique({
           where: { githubId }
         });
 
         if (existingLinkedUser && existingLinkedUser.id !== userId) {
-          // CONFLICT: This GitHub is already tied to another account (the one with the pods!)
-          // Strategy: In this specific developer case, we'll let them log into the pod account
-          // but for general use, we should probably warn.
-          // For now, let's just log them into the existing linked user so they see their pods.
+          // CONFLICT: This GitHub is already tied to another account (maybe created via GH login)
+          // We'll proceed with the existing linked account to prevent logic forks
           user = existingLinkedUser;
+          // Optionally merge? For now, we just switch to the account that already has the GitHub ID
         } else {
           // Link it to the current account
           user = await prisma.user.update({
@@ -72,26 +92,45 @@ router.get("/callback", async (req, res) => {
               githubId,
               githubUsername: login,
               githubToken: accessToken,
-              name: user.name || login // Only update name if it was empty
+              name: currentUser.name || githubName || login // Use existing name, or GitHub name, or login
             }
           });
         }
       } catch (err) {
-        console.error("Invalid token in state, falling back to normal login", err);
+        console.error("Invalid token or user in state, falling back to normal login", err.message);
       }
     }
 
-    // B. If not linking or linking failed, do normal login/creation
+    // B. Match by Email if not found via token/linking (Prevents duplicate profiles)
+    if (!user && primaryEmail) {
+      const userByEmail = await prisma.user.findUnique({ where: { email: primaryEmail } });
+      if (userByEmail) {
+        console.log(`[AUTH] Found existing user by email ${primaryEmail}. Linking GitHub...`);
+        user = await prisma.user.update({
+          where: { id: userByEmail.id },
+          data: {
+            githubId,
+            githubUsername: login,
+            githubToken: accessToken,
+            // Don't overwrite existing name unless it's empty
+            name: userByEmail.name || githubName || login
+          }
+        });
+      }
+    }
+
+    // C. If not linking or matching failed, do normal logic via GitHub ID
     if (!user) {
       user = await prisma.user.findUnique({ where: { githubId } });
 
       if (!user) {
-        // Create new user if not found
+        // Create new user if not found at all
         user = await prisma.user.create({
           data: {
             githubId,
             githubUsername: login,
-            name: login,
+            name: githubName || login,
+            email: primaryEmail,
             githubToken: accessToken,
           },
         });
@@ -101,7 +140,8 @@ router.get("/callback", async (req, res) => {
           where: { githubId },
           data: {
             githubToken: accessToken,
-            githubUsername: login // Ensure username is updated
+            githubUsername: login,
+            email: user.email || primaryEmail // Update email if missing
           },
         });
       }
