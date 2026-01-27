@@ -7,6 +7,11 @@ export const signup = async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
     // check duplicate email
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -19,6 +24,11 @@ export const signup = async (req, res) => {
       data: { email, password: hashedPassword, name },
     });
 
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not set in environment variables");
+      return res.status(500).json({ error: "Server configuration error" });
+    }
+
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
@@ -40,7 +50,8 @@ export const signup = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Signup error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 
@@ -50,11 +61,26 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
+    // Check if user has a password (GitHub-only users don't have passwords)
+    if (!user.password) {
+      return res.status(400).json({ error: "This account was created with GitHub. Please use GitHub login." });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not set in environment variables");
+      return res.status(500).json({ error: "Server configuration error" });
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
@@ -77,7 +103,8 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Signup error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 
@@ -138,7 +165,8 @@ export const getProfile = async (req, res) => {
       badgeCount: [...new Set(rewards.flatMap(r => r.badges))].length
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Signup error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 
@@ -165,7 +193,8 @@ export const searchUsers = async (req, res) => {
 
     res.json({ users });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Signup error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 };
 // PATCH /users/profile - Update user profile
@@ -191,6 +220,7 @@ export const updateProfile = async (req, res) => {
 
     res.json({ message: "Profile updated successfully", user });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Signup error:", error);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 };

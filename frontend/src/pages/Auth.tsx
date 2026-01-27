@@ -76,7 +76,7 @@ const Auth = () => {
     const handleConnectGitHub = () => {
         if (!authToken) return;
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        window.location.href = `${apiUrl}/api/github/login?token=${authToken}`;
+        window.location.href = `${apiUrl}/api/auth/github/login?token=${authToken}`;
     };
 
     return (
