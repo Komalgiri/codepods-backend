@@ -2,6 +2,7 @@ import express from "express";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { encrypt } from "../utils/encryption.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -86,12 +87,14 @@ router.get("/callback", async (req, res) => {
           // Optionally merge? For now, we just switch to the account that already has the GitHub ID
         } else {
           // Link it to the current account
+          // 🔐 Encrypt GitHub token before storing
           user = await prisma.user.update({
             where: { id: userId },
             data: {
               githubId,
               githubUsername: login,
-              githubToken: accessToken,
+              githubToken: encrypt(accessToken),
+              githubTokenValid: true,
               name: currentUser.name || githubName || login // Use existing name, or GitHub name, or login
             }
           });
@@ -106,12 +109,14 @@ router.get("/callback", async (req, res) => {
       const userByEmail = await prisma.user.findUnique({ where: { email: primaryEmail } });
       if (userByEmail) {
         console.log(`[AUTH] Found existing user by email ${primaryEmail}. Linking GitHub...`);
+        // 🔐 Encrypt GitHub token before storing
         user = await prisma.user.update({
           where: { id: userByEmail.id },
           data: {
             githubId,
             githubUsername: login,
-            githubToken: accessToken,
+            githubToken: encrypt(accessToken),
+            githubTokenValid: true,
             // Don't overwrite existing name unless it's empty
             name: userByEmail.name || githubName || login
           }
@@ -124,22 +129,24 @@ router.get("/callback", async (req, res) => {
       user = await prisma.user.findUnique({ where: { githubId } });
 
       if (!user) {
-        // Create new user if not found at all
+        // 🔐 Create new user with encrypted GitHub token
         user = await prisma.user.create({
           data: {
             githubId,
             githubUsername: login,
             name: githubName || login,
             email: primaryEmail,
-            githubToken: accessToken,
+            githubToken: encrypt(accessToken),
+            githubTokenValid: true,
           },
         });
       } else {
-        // Update token if user already exists
+        // 🔐 Update with encrypted token if user already exists
         user = await prisma.user.update({
           where: { githubId },
           data: {
-            githubToken: accessToken,
+            githubToken: encrypt(accessToken),
+            githubTokenValid: true,
             githubUsername: login,
             email: user.email || primaryEmail // Update email if missing
           },

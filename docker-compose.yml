@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - codepods-network
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - codepods-network
+
+  # PostgreSQL Database (Optional - if not using Aiven)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=codepods
+      - POSTGRES_PASSWORD=codepods_secure_2024
+      - POSTGRES_DB=codepods
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - codepods-network
+
+networks:
+  codepods-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

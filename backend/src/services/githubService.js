@@ -1,5 +1,6 @@
 import axios from "axios";
 import prisma from "../utils/prismaClient.js";
+import { decrypt, isEncrypted } from "../utils/encryption.js";
 
 /**
  * Fetch user's GitHub repositories

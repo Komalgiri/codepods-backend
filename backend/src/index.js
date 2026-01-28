@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
 
 import userRoutes from "./routes/userRoutes.js";
 import podRoutes from "./routes/podRoutes.js";
@@ -9,16 +10,26 @@ import rewardRoutes from "./routes/rewardRoutes.js";
 import githubAuth from "./routes/githubAuth.js";
 import githubRoutes from "./routes/githubRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import { apiLimiter } from "./middleware/rateLimiter.js";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ Allowed frontend origins
-const allowedOrigins = [
-  "http://localhost:3000",                      // local frontend (dev)
-  "https://your-frontend-name.vercel.app",      // replace with actual deployed frontend URL
-];
+// 🛡️ Security: Helmet for HTTP headers protection
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for API-only server
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ✅ Allowed frontend origins (environment-based for production)
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.FRONTEND_URL || "https://your-frontend-name.vercel.app"]
+  : [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+  ];
 
 // ✅ CORS setup
 app.use(
@@ -39,6 +50,9 @@ app.use(
 );
 
 app.use(express.json());
+
+// 🛡️ Security: Rate limiting for all API routes
+app.use("/api/", apiLimiter);
 
 // ✅ Routes
 app.use("/api/users", userRoutes);

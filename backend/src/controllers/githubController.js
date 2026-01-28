@@ -4,6 +4,18 @@ import {
   fetchRepoCommits,
   syncGitHubActivity,
 } from "../services/githubService.js";
+import { decrypt, isEncrypted } from "../utils/encryption.js";
+
+/**
+ * Helper function to safely decrypt GitHub token
+ * @param {string} token - Potentially encrypted token
+ * @returns {string} Decrypted token
+ */
+function decryptToken(token) {
+  if (!token) return null;
+  // Check if token is encrypted, if so decrypt it
+  return isEncrypted(token) ? decrypt(token) : token;
+}
 
 // GET /api/github/repos - Fetch user's repos
 export const getUserRepos = async (req, res) => {
@@ -22,8 +34,11 @@ export const getUserRepos = async (req, res) => {
       });
     }
 
+    // 🔐 Decrypt GitHub token before using
+    const decryptedToken = decryptToken(user.githubToken);
+
     // Fetch repos from GitHub
-    const repos = await fetchUserRepos(user.githubToken);
+    const repos = await fetchUserRepos(decryptedToken);
 
     // Format response
     const formattedRepos = repos.map((repo) => ({
@@ -89,8 +104,11 @@ export const getCommits = async (req, res) => {
       }
     }
 
+    // 🔐 Decrypt GitHub token before using
+    const decryptedToken = decryptToken(user.githubToken);
+
     // Fetch commits from GitHub
-    const commits = await fetchRepoCommits(user.githubToken, owner, repo, sinceDate);
+    const commits = await fetchRepoCommits(decryptedToken, owner, repo, sinceDate);
 
     // Format response
     const formattedCommits = commits.map((commit) => ({
@@ -140,8 +158,11 @@ export const syncActivity = async (req, res) => {
       });
     }
 
+    // 🔐 Decrypt GitHub token before using
+    const decryptedToken = decryptToken(user.githubToken);
+
     // Sync GitHub activity
-    const results = await syncGitHubActivity(userId, user.githubToken);
+    const results = await syncGitHubActivity(userId, decryptedToken);
 
     // Also refresh profile analysis whenever user syncs
     try {
@@ -182,8 +203,11 @@ export const analyzeProfile = async (req, res) => {
       return res.status(403).json({ error: "GitHub not linked" });
     }
 
+    // 🔐 Decrypt GitHub token before using
+    const decryptedToken = decryptToken(user.githubToken);
+
     const { analyzeAndSaveProfile } = await import("../services/githubService.js");
-    const result = await analyzeAndSaveProfile(userId, user.githubToken);
+    const result = await analyzeAndSaveProfile(userId, decryptedToken);
 
     res.json(result);
   } catch (error) {

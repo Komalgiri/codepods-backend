@@ -3,23 +3,25 @@ import { createPod, getPod, addMember, getPodStats, getUserPods, updatePod, getP
 import { createTask, getTasksByPod } from "../controllers/taskController.js";
 import { getPodLeaderboard, getPodAchievements } from "../controllers/rewardController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { syncLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
-console.log("[DEBUG] Initializing podRoutes");
 
 // Protected routes
-router.get("/", authMiddleware, getUserPods); // GET /api/pods
-router.post("/", authMiddleware, createPod); // POST /api/pods
+router.get("/", authMiddleware, getUserPods);
+router.post("/", authMiddleware, createPod);
 router.post("/create", authMiddleware, createPod); // Keep for backward compatibility
-router.get("/:id", authMiddleware, getPod); // GET /api/pods/:id
-router.patch("/:id", authMiddleware, updatePod); // PATCH /api/pods/:id
-router.post("/:id/members", authMiddleware, addMember); // POST /api/pods/:id/members
-router.patch("/:id/members/:memberId", authMiddleware, updateMemberRole); // PATCH /api/pods/:id/members/:memberId
-console.log("[DEBUG] Registering POST /:id/sync");
-router.post("/:id/sync", authMiddleware, syncPodActivity); // POST /api/pods/:id/sync
-router.post("/:id/join", authMiddleware, respondToInvite); // POST /api/pods/:id/join
-router.post("/:id/leave", authMiddleware, leavePod); // POST /api/pods/:id/leave
-router.delete("/:id", authMiddleware, deletePod); // DELETE /api/pods/:id
+router.get("/:id", authMiddleware, getPod);
+router.patch("/:id", authMiddleware, updatePod);
+router.post("/:id/members", authMiddleware, addMember);
+router.patch("/:id/members/:memberId", authMiddleware, updateMemberRole);
+
+// 🛡️ Sync endpoint with rate limiting
+router.post("/:id/sync", authMiddleware, syncLimiter, syncPodActivity);
+
+router.post("/:id/join", authMiddleware, respondToInvite);
+router.post("/:id/leave", authMiddleware, leavePod);
+router.delete("/:id", authMiddleware, deletePod);
 
 // Task Routes
 router.post("/:id/tasks", authMiddleware, createTask); // POST /api/pods/:id/tasks
