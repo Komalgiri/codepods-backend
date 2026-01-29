@@ -38,15 +38,21 @@ export const getUserPods = async (req, res) => {
 
     console.log(`[DEBUG] Found ${memberships.length} memberships for user ${userId}`);
 
-    const pods = memberships.map((m) => ({
-      ...m.pod,
-      role: m.role,
-      status: m.status, // Include status
-    }));
+    const pods = memberships
+      .filter((m) => m.pod) // Safety check: ensure pod exists
+      .map((m) => ({
+        ...m.pod,
+        role: m.role,
+        status: m.status,
+      }));
 
     return res.status(200).json({ pods });
   } catch (error) {
-    console.error("Error fetching user pods:", error);
+    console.error("[CRITICAL] Error fetching user pods:", {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?.id
+    });
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -168,7 +174,12 @@ export const getPod = async (req, res) => {
       userStatus: membership.status, // Let frontend know if they are pending
     });
   } catch (error) {
-    console.error("Error fetching pod:", error);
+    console.error("[CRITICAL] Error fetching pod details:", {
+      message: error.message,
+      stack: error.stack,
+      podId: req.params.id,
+      userId: req.user?.id
+    });
     res.status(500).json({ error: "Internal server error" });
   }
 };
