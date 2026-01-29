@@ -1,12 +1,9 @@
-
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { aiService, type RoadmapStage } from '../services/aiService';
 import { podService } from '../services/podService';
 import {
-    HiOutlineMap,
     HiOutlineClock,
-    HiOutlineRocketLaunch,
     HiOutlineBolt,
     HiOutlineCpuChip,
     HiOutlineQueueList,
@@ -16,15 +13,13 @@ import {
     HiCheck,
     HiOutlineLightBulb,
     HiOutlineUsers,
-    HiExclamationTriangle,
-    HiStopCircle,
     HiMagnifyingGlass,
-    HiOutlineCubeTransparent
+    HiOutlineCubeTransparent,
+    HiArrowRight
 } from 'react-icons/hi2';
 import { FaCrown, FaBrain } from 'react-icons/fa6';
-import { HiMiniStop } from 'react-icons/hi2';
-
-
+import ProjectMemoryModal from '../components/modals/ProjectMemoryModal';
+import AIObservationsModal from '../components/modals/AIObservationsModal';
 
 const AIPlanningAssistant = () => {
     const { id: podId } = useParams<{ id: string }>();
@@ -41,6 +36,10 @@ const AIPlanningAssistant = () => {
     const [syncingTaskId, setSyncingTaskId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [lastRegenTime, setLastRegenTime] = useState<number>(0);
+
+    // Modal States
+    const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+    const [isObservationsOpen, setIsObservationsOpen] = useState(false);
 
     const fetchPlan = async (isRegen = false) => {
         if (!podId) return;
@@ -100,7 +99,7 @@ const AIPlanningAssistant = () => {
 
         } catch (error) {
             console.error("Failed to fetch AI plan", error);
-            setToast({ message: 'Failed to load roadmap. Please try again.', type: 'error' });
+            setToast({ message: (error as any).message || 'Failed to load roadmap. Please try again.', type: 'error' });
         } finally {
             setLoading(false);
             setIsRegenerating(false);
@@ -149,6 +148,20 @@ const AIPlanningAssistant = () => {
         }
     };
 
+    const handleGeneralAddTask = async (title: string, description: string) => {
+        if (!podId) return;
+        try {
+            await podService.createTask(podId, {
+                title: title,
+                description: description
+            });
+            setToast({ message: `Task "${title}" created!`, type: 'success' });
+            setTimeout(() => setToast(null), 3000);
+        } catch (error) {
+            setToast({ message: 'Failed to create task.', type: 'error' });
+        }
+    };
+
     if (loading) return (
         <div className="h-full flex flex-col items-center justify-center gap-4 text-text-secondary animate-in fade-in duration-700">
             <FaBrain className="w-12 h-12 text-primary animate-pulse" />
@@ -174,6 +187,7 @@ const AIPlanningAssistant = () => {
                     </div>
                 </div>
             )}
+
             {/* Header */}
             <div className="flex items-start justify-between mb-4 shrink-0">
                 <div>
@@ -338,75 +352,54 @@ const AIPlanningAssistant = () => {
                     </div>
 
                     {brain && (
-                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4 group hover:border-ai-start/30 transition-all">
-                            <div className="flex items-center gap-2 text-ai-start">
-                                <HiOutlineCpuChip className="w-5 h-5" />
-                                <h3 className="text-sm font-bold uppercase tracking-wider">Project Memory</h3>
-                            </div>
-                            <div className="p-3 bg-background/50 rounded-xl border border-background-border/50">
-                                <p className="text-[11px] text-text-secondary leading-relaxed italic line-clamp-4">
-                                    "{brain.summary}"
-                                </p>
-                            </div>
-                            {brain.decisions?.length > 0 && (
-                                <div className="space-y-2">
-                                    <h4 className="text-[10px] font-bold text-text-secondary uppercase">Decisions Made</h4>
-                                    <div className="flex flex-col gap-1.5">
-                                        {brain.decisions.slice(0, 3).map((d: string, i: number) => (
-                                            <div key={i} className="flex gap-2 items-start text-[10px] text-text-primary group/decision hover:text-ai-start transition-colors">
-                                                <HiMiniStop className="w-2.5 h-2.5 mt-0.5 text-ai-start" />
-                                                <span>{d}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                        <div
+                            onClick={() => setIsMemoryOpen(true)}
+                            className="group cursor-pointer bg-background-surface border border-background-border hover:border-ai-start/50 rounded-2xl p-6 transition-all transform hover:-translate-y-1 hover:shadow-lg"
+                        >
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2 text-ai-start">
+                                    <HiOutlineCpuChip className="w-6 h-6" />
+                                    <h3 className="text-sm font-bold uppercase tracking-wider">Project Memory</h3>
                                 </div>
-                            )}
+                                <HiArrowRight className="w-4 h-4 text-text-secondary -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
+                            </div>
+                            <p className="text-xs text-text-secondary line-clamp-3 mb-3">
+                                {brain.summary}
+                            </p>
+                            <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider text-text-secondary">
+                                <span className="px-2 py-1 bg-background rounded-lg border border-background-border">{brain.decisions?.length || 0} Decision Nodes</span>
+                            </div>
                         </div>
                     )}
 
                     {/* AI Manager Observations */}
-                    <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex flex-col gap-4 group hover:border-primary/30 transition-all">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-primary font-bold">
-                                <HiMagnifyingGlass className="w-5 h-5" />
-                                <h3>AI Manager Observations</h3>
+                    <div
+                        onClick={() => setIsObservationsOpen(true)}
+                        className="group cursor-pointer bg-background-surface border border-background-border hover:border-primary/50 rounded-2xl p-6 transition-all transform hover:-translate-y-1 hover:shadow-lg"
+                    >
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2 text-primary">
+                                <HiMagnifyingGlass className="w-6 h-6" />
+                                <h3 className="text-sm font-bold uppercase tracking-wider">AI Observations</h3>
                             </div>
-                            <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase">Real-time Analysis</span>
+                            <HiArrowRight className="w-4 h-4 text-text-secondary -translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
                         </div>
 
-                        <div className="space-y-3">
-                            {pmInsights && pmInsights.length > 0 ? pmInsights.map((insight, idx) => (
-                                <div key={idx} className={`p-3 rounded-xl border flex gap-3 animate-in fade-in slide-in-from-right-4 duration-500 delay-${idx * 100} ${insight.type === 'blocker' ? 'bg-red-500/5 border-red-500/20' :
-                                    insight.type === 'warning' ? 'bg-orange-500/10 border-orange-500/20' :
-                                        'bg-cyan-500/5 border-cyan-500/20'
-                                    }`}>
-                                    <div className="mt-0.5 flex-shrink-0">
-                                        {insight.type === 'blocker' ? <HiStopCircle className="w-4 h-4 text-red-500" /> :
-                                            insight.type === 'warning' ? <HiExclamationTriangle className="w-4 h-4 text-orange-500" /> :
-                                                <HiOutlineLightBulb className="w-4 h-4 text-cyan-500" />}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${insight.type === 'blocker' || insight.type === 'warning' ? 'text-text-primary' : 'text-cyan-500'
-                                                }`}>
-                                                {insight.type}
-                                            </span>
-                                            {insight.priority === 'high' && (
-                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-text-secondary leading-normal">{insight.message}</p>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="text-center py-6">
-                                    <div className="flex justify-center mb-2">
-                                        <HiCheckCircle className="w-8 h-8 text-success opacity-50" />
-                                    </div>
-                                    <p className="text-[11px] text-text-secondary italic">Everything looks smooth. No blockers detected!</p>
-                                </div>
-                            )}
+                        <div className="flex gap-3 mb-2">
+                            <div className="flex-1 bg-red-500/10 rounded-lg p-2 text-center border border-red-500/10">
+                                <div className="text-lg font-bold text-red-500 leading-none">{pmInsights.filter(i => i.type === 'blocker').length}</div>
+                                <div className="text-[9px] font-bold text-red-500 uppercase mt-1">Blockers</div>
+                            </div>
+                            <div className="flex-1 bg-orange-500/10 rounded-lg p-2 text-center border border-orange-500/10">
+                                <div className="text-lg font-bold text-orange-500 leading-none">{pmInsights.filter(i => i.type === 'warning').length}</div>
+                                <div className="text-[9px] font-bold text-orange-500 uppercase mt-1">Risks</div>
+                            </div>
+                            <div className="flex-1 bg-cyan-500/10 rounded-lg p-2 text-center border border-cyan-500/10">
+                                <div className="text-lg font-bold text-cyan-500 leading-none">{pmInsights.filter(i => i.type === 'suggestion').length}</div>
+                                <div className="text-[9px] font-bold text-cyan-500 uppercase mt-1">Tips</div>
+                            </div>
                         </div>
+                        <p className="text-[10px] text-center text-text-secondary">Click to view detailed analysis graph</p>
                     </div>
 
                     <div className="bg-background-surface border border-background-border rounded-2xl p-6 flex-1 overflow-y-auto group hover:border-orange-400/30 transition-all">
@@ -442,6 +435,21 @@ const AIPlanningAssistant = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Modals */}
+            <ProjectMemoryModal
+                isOpen={isMemoryOpen}
+                onClose={() => setIsMemoryOpen(false)}
+                brain={brain}
+                onAddTask={handleGeneralAddTask}
+            />
+
+            <AIObservationsModal
+                isOpen={isObservationsOpen}
+                onClose={() => setIsObservationsOpen(false)}
+                insights={pmInsights}
+                onAddTask={handleGeneralAddTask}
+            />
         </div>
     );
 };

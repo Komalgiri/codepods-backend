@@ -30,7 +30,7 @@ export const signup = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, githubId: user.githubId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -83,7 +83,7 @@ export const login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, githubId: user.githubId },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );

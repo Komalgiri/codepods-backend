@@ -88,29 +88,58 @@ export const getPodRoadmap = async (req, res) => {
 
         const now = new Date();
         const CACHE_STALE_TIME = 7 * 24 * 60 * 60 * 1000;
-        let isCacheValid = false;
 
-        // Skip cache if 'force' is present
-        if (pod.aiRoadmap && pod.roadmapUpdatedAt && force !== 'true') {
+        let shouldGenerate = false;
+        let returnCached = false;
+
+        // 1. Check if user is Admin
+        const userId = req.user.id;
+        const infoMember = pod.members.find(m => m.user.id === userId);
+        const isAdmin = infoMember && infoMember.role === 'admin';
+
+        // 2. Analyze Cache State
+        if (pod.aiRoadmap && pod.roadmapUpdatedAt) {
             const timeSinceUpdate = now - new Date(pod.roadmapUpdatedAt);
-            const cachedData = typeof pod.aiRoadmap === 'string' ? JSON.parse(pod.aiRoadmap) : pod.aiRoadmap;
-            const previousMemberCount = cachedData.meta?.memberCount || 0;
-            const currentMemberCount = pod.members.length;
+            const isFresh = timeSinceUpdate < CACHE_STALE_TIME;
 
-            if (previousMemberCount === currentMemberCount && timeSinceUpdate < CACHE_STALE_TIME) {
-                isCacheValid = true;
+            if (isFresh) {
+                // If fresh, return cached UNLESS Admin forces it
+                if (force === 'true' && isAdmin) {
+                    shouldGenerate = true;
+                } else {
+                    returnCached = true;
+                }
+            } else {
+                // If stale (> 7 days)
+                if (isAdmin) {
+                    shouldGenerate = true;
+                } else {
+                    // Non-admin sees stale content instead of triggering new one
+                    returnCached = true;
+                }
+            }
+        } else {
+            // No roadmap exists
+            if (isAdmin) {
+                shouldGenerate = true;
+            } else {
+                return res.status(403).json({ error: "No roadmap exists. Only the Pod Admin can generate the initial roadmap." });
             }
         }
 
-        if (isCacheValid) {
+        if (returnCached) {
             const cachedData = typeof pod.aiRoadmap === 'string' ? JSON.parse(pod.aiRoadmap) : pod.aiRoadmap;
             const teamAllocation = calculateTeamAllocation(pod.members, pod.name, pod.description);
             return res.status(200).json({
                 ...cachedData,
                 members: teamAllocation,
-                projectBrain: pod.projectBrain || null
+                projectBrain: pod.projectBrain || null,
+                cached: true // Helper flag for frontend
             });
         }
+
+        // Proceeding to Generation
+        console.log(`[AI] Generating new roadmap for pod ${podId} (Admin: ${isAdmin})`);
 
         console.log(`[AI] Cache miss/stale for pod ${podId}, generating new roadmap...`);
 

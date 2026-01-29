@@ -2,15 +2,15 @@ import express from "express";
 import { createPod, getPod, addMember, getPodStats, getUserPods, updatePod, getPodActivities, updateMemberRole, syncPodActivity, respondToInvite, leavePod, deletePod } from "../controllers/podController.js";
 import { createTask, getTasksByPod } from "../controllers/taskController.js";
 import { getPodLeaderboard, getPodAchievements } from "../controllers/rewardController.js";
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import { authMiddleware, requireGitHub } from "../middleware/authMiddleware.js";
 import { syncLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
 // Protected routes
 router.get("/", authMiddleware, getUserPods);
-router.post("/", authMiddleware, createPod);
-router.post("/create", authMiddleware, createPod); // Keep for backward compatibility
+router.post("/", authMiddleware, requireGitHub, createPod);
+router.post("/create", authMiddleware, requireGitHub, createPod); // Keep for backward compatibility
 router.get("/:id", authMiddleware, getPod);
 router.patch("/:id", authMiddleware, updatePod);
 router.post("/:id/members", authMiddleware, addMember);

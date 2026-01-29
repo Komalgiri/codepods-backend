@@ -6,6 +6,7 @@ import CreatePod from "./pages/CreatePod";
 import PodOverview from "./pages/PodOverview";
 import AuthCallback from "./pages/AuthCallback";
 import UserProfile from "./pages/UserProfile";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -14,10 +15,14 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/create-pod" element={<CreatePod />} />
-        <Route path="/pod/:id" element={<PodOverview />} />
-        <Route path="/profile" element={<UserProfile />} />
+
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/create-pod" element={<CreatePod />} />
+          <Route path="/pod/:id" element={<PodOverview />} />
+          <Route path="/profile" element={<UserProfile />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

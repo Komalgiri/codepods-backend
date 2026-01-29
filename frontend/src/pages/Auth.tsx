@@ -25,6 +25,13 @@ const Auth = () => {
         const mode = searchParams.get('mode');
         if (mode === 'signup') {
             setIsLogin(false);
+        } else if (mode === 'connect_github') {
+            // Check if we have a token, if so, show modal
+            const token = localStorage.getItem('token');
+            if (token) {
+                setAuthToken(token);
+                setShowGitHubModal(true);
+            }
         } else {
             setIsLogin(true);
         }
@@ -258,7 +265,14 @@ const Auth = () => {
 
             <GitHubConnectModal
                 isOpen={showGitHubModal}
-                onClose={() => navigate('/dashboard')}
+                onClose={() => {
+                    // If mandatory, closing acts as logout/cancel
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setAuthToken(null);
+                    setShowGitHubModal(false);
+                    navigate('/auth');
+                }}
                 onConnect={handleConnectGitHub}
             />
         </div >

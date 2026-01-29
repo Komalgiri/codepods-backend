@@ -14,3 +14,11 @@ export const authMiddleware = (req, res, next) => {
     res.status(401).json({ error: "Invalid token" });
   }
 };
+
+export const requireGitHub = (req, res, next) => {
+  // authMiddleware must run first to populate req.user
+  if (!req.user || !req.user.githubId) {
+    return res.status(403).json({ error: "GitHub account linking is mandatory." });
+  }
+  next();
+};
