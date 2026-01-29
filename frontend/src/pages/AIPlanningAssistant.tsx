@@ -88,11 +88,13 @@ const AIPlanningAssistant = ({ pod }: AIPlanningProps) => {
             // Fetch fresh data
             const response = await aiService.getPodPlan(podId, isRegen);
 
-            // Cache the response
-            localStorage.setItem(CACHE_KEY, JSON.stringify({
-                data: response,
-                timestamp: Date.now()
-            }));
+            // Cache the response if it contains data
+            if (response.roadmap && response.roadmap.length > 0) {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    data: response,
+                    timestamp: Date.now()
+                }));
+            }
 
             setRoadmap(response.roadmap || []);
             setTeamAllocation(response.members || []);

@@ -92,10 +92,15 @@ export const getPodRoadmap = async (req, res) => {
         let shouldGenerate = false;
         let returnCached = false;
 
-        // 1. Check if user is Admin
+        // 1. Check Membership & Permissions
         const userId = req.user.id;
-        const infoMember = pod.members.find(m => m.user.id === userId);
-        const isAdmin = infoMember && infoMember.role === 'admin';
+        const membership = pod.members.find(m => m.userId === userId || m.user?.id === userId);
+
+        if (!membership) {
+            return res.status(403).json({ error: "Access denied. You must be a member of this pod to view the strategic plan." });
+        }
+
+        const isAdmin = membership.role === 'admin';
 
         // 2. Analyze Cache State
         if (pod.aiRoadmap && pod.roadmapUpdatedAt) {
@@ -123,18 +128,24 @@ export const getPodRoadmap = async (req, res) => {
             if (isAdmin) {
                 shouldGenerate = true;
             } else {
-                return res.status(403).json({ error: "No roadmap exists. Only the Pod Admin can generate the initial roadmap." });
+                return res.status(200).json({
+                    roadmap: [],
+                    message: "No roadmap generated yet.",
+                    isAdmin: false
+                });
             }
         }
 
         if (returnCached) {
+            console.log(`[AI] Returning cached roadmap for pod ${podId} to user ${userId}`);
             const cachedData = typeof pod.aiRoadmap === 'string' ? JSON.parse(pod.aiRoadmap) : pod.aiRoadmap;
             const teamAllocation = calculateTeamAllocation(pod.members, pod.name, pod.description);
+
             return res.status(200).json({
                 ...cachedData,
                 members: teamAllocation,
                 projectBrain: pod.projectBrain || null,
-                cached: true // Helper flag for frontend
+                cached: true
             });
         }
 
