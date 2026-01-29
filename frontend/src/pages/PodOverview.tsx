@@ -34,6 +34,7 @@ const PodOverview = () => {
     const [isVerifying, setIsVerifying] = useState(false);
     const [verifyGithubUsername, setVerifyGithubUsername] = useState('');
     const [health, setHealth] = useState<any>(null);
+    const [userStatus, setUserStatus] = useState<string>('accepted');
 
     const refreshData = async () => {
         if (!podId) return;
@@ -44,6 +45,7 @@ const PodOverview = () => {
                 podService.getPodLeaderboard(podId)
             ]);
             setPod(podResponse.pod);
+            setUserStatus(podResponse.userStatus);
             setStats(statsResponse.stats);
             setHealth(lbResponse.health);
         } catch (error) {
@@ -159,6 +161,24 @@ const PodOverview = () => {
         }
     };
 
+    const handleRespondInvite = async (status: 'accepted' | 'rejected') => {
+        if (!podId) return;
+        setUpdating(true);
+        try {
+            await podService.respondToInvite(podId, status);
+            if (status === 'accepted') {
+                setMessage({ type: 'success', text: 'Welcome to the pod! 🚀' });
+                refreshData();
+            } else {
+                navigate('/dashboard');
+            }
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message || 'Failed to respond to invite' });
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     // Sidebar Items configuration
     const sidebarItems: SidebarItem[] = [
         {
@@ -209,6 +229,35 @@ const PodOverview = () => {
             default:
                 return (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 text-text-primary">
+                        {/* Invitation Banner */}
+                        {userStatus === 'pending' && (
+                            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-primary/5">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-2xl">📩</div>
+                                    <div>
+                                        <h3 className="font-bold text-text-primary">You've been invited!</h3>
+                                        <p className="text-sm text-text-secondary">Join this pod to collaborate and earn rewards with the team.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 w-full md:w-auto">
+                                    <button
+                                        onClick={() => handleRespondInvite('rejected')}
+                                        disabled={updating}
+                                        className="px-6 py-2 rounded-lg text-sm font-bold text-text-secondary hover:bg-background-border transition-colors disabled:opacity-50"
+                                    >
+                                        DECLINE
+                                    </button>
+                                    <button
+                                        onClick={() => handleRespondInvite('accepted')}
+                                        disabled={updating}
+                                        className="bg-primary text-primary-foreground px-8 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {updating ? 'JOINING...' : 'ACCEPT INVITATION'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Verification Banner */}
                         {needsGithubVerification && (
                             <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-primary/5">

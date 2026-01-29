@@ -22,6 +22,7 @@ interface Pod {
     id: string;
     name: string;
     role: string;
+    status: string;
 }
 
 interface Task {
@@ -222,7 +223,10 @@ const UserDashboard = () => {
                                                         <div className="relative z-10">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <h3 className="font-bold text-lg text-text-primary group-hover:text-primary transition-colors truncate">{pod.name}</h3>
-                                                                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">{pod.role}</span>
+                                                                <div className="flex gap-1.5 shrink-0">
+                                                                    <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{pod.role}</span>
+                                                                    {pod.status === 'pending' && <span className="text-[10px] bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">Invited</span>}
+                                                                </div>
                                                             </div>
                                                             <p className="text-sm text-text-secondary line-clamp-2">
                                                                 Collaborative workspace for the {pod.name} project team.
@@ -238,7 +242,7 @@ const UserDashboard = () => {
                                                                 ))}
                                                             </div>
                                                             <div className="flex items-center gap-1 text-[11px] font-bold text-primary group-hover:translate-x-1 transition-transform">
-                                                                Open Pod
+                                                                {pod.status === 'pending' ? 'Review Invite' : 'Open Pod'}
                                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                                                     <polyline points="12 5 19 12 12 19"></polyline>

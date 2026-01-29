@@ -114,15 +114,15 @@ export const podService = {
         });
     },
 
-    getUserPods: async (): Promise<{ pods: (Pod & { role: string })[] }> => {
-        return apiRequest<{ pods: (Pod & { role: string })[] }>('pods', {
+    getUserPods: async (): Promise<{ pods: (Pod & { role: string; status: string })[] }> => {
+        return apiRequest<{ pods: (Pod & { role: string; status: string })[] }>('pods', {
             method: 'GET',
             token: localStorage.getItem('token'),
         });
     },
 
-    getPod: async (id: string): Promise<{ pod: Pod }> => {
-        return apiRequest<{ pod: Pod }>(`pods/${id}`, {
+    getPod: async (id: string): Promise<{ pod: Pod; userStatus: string }> => {
+        return apiRequest<{ pod: Pod; userStatus: string }>(`pods/${id}`, {
             method: 'GET',
             token: localStorage.getItem('token'),
         });
@@ -228,6 +228,14 @@ export const podService = {
         return apiRequest<{ message: string; user: any }>('users/profile', {
             method: 'PATCH',
             body: data,
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    respondToInvite: async (podId: string, status: 'accepted' | 'rejected'): Promise<{ message: string }> => {
+        return apiRequest<{ message: string }>(`pods/${podId}/join`, {
+            method: 'POST',
+            body: { status },
             token: localStorage.getItem('token'),
         });
     }
