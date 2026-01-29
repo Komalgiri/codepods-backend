@@ -44,10 +44,19 @@ const PodOverview = () => {
                 podService.getPodStats(podId),
                 podService.getPodLeaderboard(podId)
             ]);
+
             setPod(podResponse.pod);
-            setUserStatus(podResponse.userStatus);
             setStats(statsResponse.stats);
             setHealth(lbResponse.health);
+
+            // Robust user status detection
+            if (podResponse.userStatus) {
+                setUserStatus(podResponse.userStatus);
+            } else {
+                const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+                const member = podResponse.pod.members.find(m => m.userId === currentUser.id || m.user?.id === currentUser.id);
+                if (member) setUserStatus(member.status);
+            }
         } catch (error) {
             console.error("Failed to fetch pod data", error);
         }
@@ -229,35 +238,6 @@ const PodOverview = () => {
             default:
                 return (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 text-text-primary">
-                        {/* Invitation Banner */}
-                        {userStatus === 'pending' && (
-                            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-primary/5">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-2xl">📩</div>
-                                    <div>
-                                        <h3 className="font-bold text-text-primary">You've been invited!</h3>
-                                        <p className="text-sm text-text-secondary">Join this pod to collaborate and earn rewards with the team.</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-3 w-full md:w-auto">
-                                    <button
-                                        onClick={() => handleRespondInvite('rejected')}
-                                        disabled={updating}
-                                        className="px-6 py-2 rounded-lg text-sm font-bold text-text-secondary hover:bg-background-border transition-colors disabled:opacity-50"
-                                    >
-                                        DECLINE
-                                    </button>
-                                    <button
-                                        onClick={() => handleRespondInvite('accepted')}
-                                        disabled={updating}
-                                        className="bg-primary text-primary-foreground px-8 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 disabled:opacity-50"
-                                    >
-                                        {updating ? 'JOINING...' : 'ACCEPT INVITATION'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Verification Banner */}
                         {needsGithubVerification && (
                             <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-primary/5">
@@ -782,7 +762,49 @@ const PodOverview = () => {
                         </div>
                     )}
 
-                    <div className="max-w-7xl mx-auto">
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        {/* GLOBAL INVITATION BANNER */}
+                        {userStatus === 'pending' && (
+                            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-primary/10 animate-in slide-in-from-top-4 duration-500 mb-8 border-l-4 border-l-primary">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center text-3xl shadow-inner">📩</div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-text-primary">Pending Invitation</h3>
+                                        <p className="text-sm text-text-secondary max-w-md mt-1">
+                                            You've been invited to join <span className="text-primary font-bold">@{pod?.name}</span>.
+                                            Accept to unlock your contributions, earn XP, and start collaborating.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 w-full md:w-auto">
+                                    <button
+                                        onClick={() => handleRespondInvite('rejected')}
+                                        disabled={updating}
+                                        className="flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold text-text-secondary hover:bg-background-border transition-all hover:text-text-primary disabled:opacity-50"
+                                    >
+                                        DECLINE
+                                    </button>
+                                    <button
+                                        onClick={() => handleRespondInvite('accepted')}
+                                        disabled={updating}
+                                        className="flex-1 md:flex-none bg-primary text-primary-foreground px-10 py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {updating ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                JOINING...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <HiPlus className="w-5 h-5" />
+                                                ACCEPT INVITATION
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {renderContent()}
                     </div>
                 </main>

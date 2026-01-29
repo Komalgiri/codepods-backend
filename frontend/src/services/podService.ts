@@ -11,6 +11,7 @@ export interface PodMember {
     userId: string;
     podId: string;
     role: string;
+    status: string;
     user?: {
         id: string;
         name: string;
