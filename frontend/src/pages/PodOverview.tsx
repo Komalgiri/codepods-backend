@@ -5,7 +5,7 @@ import AIPlanningAssistant from './AIPlanningAssistant';
 import GitHubActivity from './GitHubActivity';
 import PodRewards from './PodRewards';
 import { podService, type Pod, type PodStats } from '../services/podService';
-import { HiChartBar, HiPlus, HiLightningBolt, HiOutlineHome, HiOutlineMap, HiOutlineClipboardList, HiOutlineGift } from 'react-icons/hi';
+import { HiChartBar, HiPlus, HiLightningBolt, HiOutlineHome, HiOutlineMap, HiOutlineClipboardList, HiOutlineGift, HiLockClosed } from 'react-icons/hi';
 import { FaFire, FaUserShield, FaCrown, FaTools, FaGithub } from 'react-icons/fa';
 
 // Type definitions for Sidebar Items
@@ -225,11 +225,32 @@ const PodOverview = () => {
         const currentMember = pod.members.find(m => m.user?.id === currentUser.id || m.userId === currentUser.id);
         const needsGithubVerification = !currentMember?.user?.githubUsername && !currentUser.githubUsername;
 
+        if (userStatus === 'pending' && activeTab !== 'Overview') {
+            return (
+                <div className="h-full flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in-95 duration-500">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                        <HiLockClosed className="w-10 h-10 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">Section Locked</h2>
+                    <p className="text-text-secondary text-center max-w-md mb-8">
+                        This section contains confidential team collaboration and task data.
+                        Please <span className="text-primary font-bold">Accept the Invitation</span> in the Overview tab to unlock full access.
+                    </p>
+                    <button
+                        onClick={() => setActiveTab('Overview')}
+                        className="px-6 py-2 bg-background-border text-text-primary rounded-lg font-bold hover:bg-primary/10 transition-colors"
+                    >
+                        GO TO OVERVIEW
+                    </button>
+                </div>
+            );
+        }
+
         switch (activeTab) {
             case 'TaskBoard':
                 return <PodTaskBoard />;
             case 'AIPlanning':
-                return <AIPlanningAssistant />;
+                return <AIPlanningAssistant pod={pod} />;
             case 'GitHubStats':
                 return <GitHubActivity />;
             case 'Rewards':
@@ -715,24 +736,37 @@ const PodOverview = () => {
                         </div>
 
                         <nav className="space-y-1.5">
-                            {sidebarItems.map((item) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setActiveTab(item.id)}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 group relative overflow-hidden ${activeTab === item.id
-                                        ? 'bg-primary/10 text-primary border border-primary/30 shadow-[0_0_15px_rgba(88,166,154,0.1)]'
-                                        : 'text-text-secondary hover:text-primary hover:bg-primary/5 border border-transparent'
-                                        }`}
-                                >
-                                    <span className={`transition-transform duration-300 ${activeTab === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
-                                        {item.icon}
-                                    </span>
-                                    <span className="relative z-10">{item.label}</span>
-                                    {activeTab === item.id && (
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full animate-in slide-in-from-left duration-300"></div>
-                                    )}
-                                </button>
-                            ))}
+                            {sidebarItems.map((item) => {
+                                const isLocked = userStatus === 'pending' && item.id !== 'Overview';
+
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => !isLocked && setActiveTab(item.id)}
+                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 group relative overflow-hidden ${activeTab === item.id
+                                            ? 'bg-primary/10 text-primary border border-primary/30 shadow-[0_0_15px_rgba(88,166,154,0.1)]'
+                                            : isLocked
+                                                ? 'text-text-secondary/30 cursor-not-allowed opacity-60 grayscale'
+                                                : 'text-text-secondary hover:text-primary hover:bg-primary/5 border border-transparent'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className={`transition-transform duration-300 ${activeTab === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                                {item.icon}
+                                            </span>
+                                            <span className="relative z-10">{item.label}</span>
+                                        </div>
+
+                                        {isLocked && (
+                                            <HiLockClosed className="w-3.5 h-3.5 text-text-secondary/50" />
+                                        )}
+
+                                        {activeTab === item.id && (
+                                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full animate-in slide-in-from-left duration-300"></div>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </nav>
                     </div>
 

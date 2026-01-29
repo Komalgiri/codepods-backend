@@ -17,12 +17,21 @@ import {
     HiOutlineCubeTransparent,
     HiArrowRight
 } from 'react-icons/hi2';
+import { HiOutlineMap } from 'react-icons/hi';
 import { FaCrown, FaBrain } from 'react-icons/fa6';
 import ProjectMemoryModal from '../components/modals/ProjectMemoryModal';
 import AIObservationsModal from '../components/modals/AIObservationsModal';
 
-const AIPlanningAssistant = () => {
+interface AIPlanningProps {
+    pod: any;
+}
+
+const AIPlanningAssistant = ({ pod }: AIPlanningProps) => {
     const { id: podId } = useParams<{ id: string }>();
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdmin = pod?.members?.some((m: any) =>
+        (m.userId === currentUser.id || m.user?.id === currentUser.id) && m.role === 'admin'
+    );
     const [roadmap, setRoadmap] = useState<RoadmapStage[]>([]);
     const [teamAllocation, setTeamAllocation] = useState<any[]>([]);
     const [projectStage, setProjectStage] = useState<string>("Analyzing...");
@@ -169,6 +178,8 @@ const AIPlanningAssistant = () => {
         </div>
     );
 
+    const hasRoadmap = roadmap && roadmap.length > 0;
+
     return (
         <div className="h-full flex flex-col gap-6 overflow-hidden">
             {/* Toast Notification */}
@@ -239,117 +250,148 @@ const AIPlanningAssistant = () => {
                                     Refreshes in {meta.daysUntilRegeneration} days
                                 </span>
                             )}
-                            <button
-                                onClick={handleRegenerateNodes}
-                                disabled={isRegenerating}
-                                className="text-xs font-bold text-cyan-500 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
-                            >
-                                {isRegenerating ? 'Optimizing...' : 'Regenerate Nodes'}
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    onClick={handleRegenerateNodes}
+                                    disabled={isRegenerating}
+                                    className="text-xs font-bold text-cyan-500 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
+                                >
+                                    {isRegenerating ? 'Optimizing...' : 'Regenerate Nodes'}
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     <div className="relative pl-4 space-y-12 before:absolute before:left-[23px] before:top-4 before:bottom-4 before:w-0.5 before:bg-background-border">
-                        {roadmap && Array.isArray(roadmap) && roadmap.map((stage) => (
-                            <div key={stage.id} className="relative pl-8">
-                                <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-4 border-background-surface ${stage.status === 'COMPLETED' ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : stage.status === 'IN PROGRESS' ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-background-border'}`}></div>
-
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <h4 className="font-bold text-text-primary text-lg">{stage.title}</h4>
-                                        <p className="text-xs text-text-secondary">{stage.description}</p>
-                                    </div>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${stage.status === 'COMPLETED' ? 'bg-cyan-500/10 text-cyan-500' :
-                                        stage.status === 'IN PROGRESS' ? 'bg-cyan-500 text-background font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' :
-                                            'bg-background-border/50 text-text-secondary'
-                                        }`}>
-                                        {stage.status}
-                                    </span>
+                        {!hasRoadmap ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="w-16 h-16 rounded-full bg-background-border/50 flex items-center justify-center mb-4">
+                                    <HiOutlineMap className="w-8 h-8 text-text-secondary opacity-30" />
                                 </div>
-
-                                {stage.tasks && stage.tasks.length > 0 && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                        {stage.tasks.map((task, idx) => {
-                                            const taskKey = `${stage.id}-${task.name}`;
-                                            const isSynced = syncedTasks.has(taskKey);
-                                            const isSyncing = syncingTaskId === taskKey;
-
-                                            return (
-                                                <div key={idx} className={`bg-background/30 border border-background-border rounded-xl p-3 flex flex-col gap-2 transition-all ${isSynced ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-sm text-text-primary font-medium">{task.name}</span>
-                                                        <div className="flex items-center gap-2">
-                                                            {task.status === 'done' && (
-                                                                <div className="w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500">
-                                                                    <HiCheck className="w-3 h-3 stroke-[3]" />
-                                                                </div>
-                                                            )}
-                                                            {!isSynced ? (
-                                                                <button
-                                                                    onClick={() => handleAddRoadmapTask(stage.id, task)}
-                                                                    disabled={isSyncing}
-                                                                    className="w-6 h-6 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/30 transition-colors"
-                                                                    title="Add to Task Board"
-                                                                >
-                                                                    {isSyncing ? (
-                                                                        <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                                                    ) : (
-                                                                        <HiPlus className="w-3.5 h-3.5" />
-                                                                    )}
-                                                                </button>
-                                                            ) : (
-                                                                <div className="px-1.5 py-0.5 bg-green-500/10 text-green-500 text-[8px] font-bold rounded border border-green-500/20 uppercase tracking-tighter">
-                                                                    Added
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {(task.assignee || (task as any).assigneeId) && (
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <div className="relative">
-                                                                <img
-                                                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.assignee || (task as any).assigneeId}`}
-                                                                    alt={task.assignee}
-                                                                    className="w-4 h-4 rounded-full bg-background-surface border border-background-border"
-                                                                />
-                                                                <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-background"></div>
-                                                            </div>
-                                                            <span className="text-[10px] font-bold text-text-secondary">{task.assignee || 'Member'}</span>
-                                                        </div>
-                                                    )}
-
-                                                    {task.status === 'progress' && (
-                                                        <div className="w-full h-1 bg-background-border rounded-full overflow-hidden mt-1">
-                                                            <div className="h-full bg-cyan-500" style={{ width: `${task.progress}%` }}></div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                <h4 className="text-lg font-bold text-text-primary mb-2">No Roadmap Generated Yet</h4>
+                                <p className="text-sm text-text-secondary max-w-sm">
+                                    {isAdmin
+                                        ? "Generate a strategic plan to help your team navigate project milestones."
+                                        : "The Pod Admin hasn't generated the strategic roadmap yet. Ask them to initialize the project plan!"}
+                                </p>
                             </div>
-                        ))}
+                        ) : (
+                            roadmap.map((stage) => (
+                                <div key={stage.id} className="relative pl-8">
+                                    <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-4 border-background-surface ${stage.status === 'COMPLETED' ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : stage.status === 'IN PROGRESS' ? 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-background-border'}`}></div>
+
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h4 className="font-bold text-text-primary text-lg">{stage.title}</h4>
+                                            <p className="text-xs text-text-secondary">{stage.description}</p>
+                                        </div>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${stage.status === 'COMPLETED' ? 'bg-cyan-500/10 text-cyan-500' :
+                                            stage.status === 'IN PROGRESS' ? 'bg-cyan-500 text-background font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' :
+                                                'bg-background-border/50 text-text-secondary'
+                                            }`}>
+                                            {stage.status}
+                                        </span>
+                                    </div>
+
+                                    {stage.tasks && stage.tasks.length > 0 && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                            {stage.tasks.map((task, idx) => {
+                                                const taskKey = `${stage.id}-${task.name}`;
+                                                const isSynced = syncedTasks.has(taskKey);
+                                                const isSyncing = syncingTaskId === taskKey;
+
+                                                return (
+                                                    <div key={idx} className={`bg-background/30 border border-background-border rounded-xl p-3 flex flex-col gap-2 transition-all ${isSynced ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-sm text-text-primary font-medium">{task.name}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                {task.status === 'done' && (
+                                                                    <div className="w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-500">
+                                                                        <HiCheck className="w-3 h-3 stroke-[3]" />
+                                                                    </div>
+                                                                )}
+                                                                {!isSynced ? (
+                                                                    <button
+                                                                        onClick={() => handleAddRoadmapTask(stage.id, task)}
+                                                                        disabled={isSyncing}
+                                                                        className="w-6 h-6 rounded-md bg-primary/20 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/30 transition-colors"
+                                                                        title="Add to Task Board"
+                                                                    >
+                                                                        {isSyncing ? (
+                                                                            <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                                                        ) : (
+                                                                            <HiPlus className="w-3.5 h-3.5" />
+                                                                        )}
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="px-1.5 py-0.5 bg-green-500/10 text-green-500 text-[8px] font-bold rounded border border-green-500/20 uppercase tracking-tighter">
+                                                                        Added
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {(task.assignee || (task as any).assigneeId) && (
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <div className="relative">
+                                                                    <img
+                                                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${task.assignee || (task as any).assigneeId}`}
+                                                                        alt={task.assignee}
+                                                                        className="w-4 h-4 rounded-full bg-background-surface border border-background-border"
+                                                                    />
+                                                                    <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-background"></div>
+                                                                </div>
+                                                                <span className="text-[10px] font-bold text-text-secondary">{task.assignee || 'Member'}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {task.status === 'progress' && (
+                                                            <div className="w-full h-1 bg-background-border rounded-full overflow-hidden mt-1">
+                                                                <div className="h-full bg-cyan-500" style={{ width: `${task.progress}%` }}></div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
                 {/* Right Action Column */}
                 <div className="w-80 flex flex-col gap-6 shrink-0">
-                    <div className="bg-gradient-to-br from-cyan-500/20 to-teal-500/10 border border-cyan-500/20 rounded-2xl p-6 relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h3 className="text-lg font-bold text-text-primary mb-2">Sprint Optimization</h3>
-                            <p className="text-xs text-text-secondary mb-6">Let the AI scan your repository and optimize the next sprint backlog.</p>
-                            <button
-                                onClick={handleRegenerateNodes}
-                                disabled={isRegenerating}
-                                className="w-full py-3 bg-text-primary text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                            >
-                                <HiOutlineBolt className={`w-5 h-5 ${isRegenerating ? 'animate-spin' : ''}`} />
-                                {isRegenerating ? 'Analyzing...' : 'Generate AI Plan'}
-                            </button>
+                    {isAdmin ? (
+                        <div className="bg-gradient-to-br from-cyan-500/20 to-teal-500/10 border border-cyan-500/20 rounded-2xl p-6 relative overflow-hidden">
+                            <div className="relative z-10">
+                                <h3 className="text-lg font-bold text-text-primary mb-2">Sprint Optimization</h3>
+                                <p className="text-xs text-text-secondary mb-6">Let the AI scan your repository and optimize the next sprint backlog.</p>
+                                <button
+                                    onClick={handleRegenerateNodes}
+                                    disabled={isRegenerating}
+                                    className="w-full py-3 bg-text-primary text-background font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                                >
+                                    <HiOutlineBolt className={`w-5 h-5 ${isRegenerating ? 'animate-spin' : ''}`} />
+                                    {isRegenerating ? 'Analyzing...' : hasRoadmap ? 'Regenerate Plan' : 'Generate AI Plan'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="bg-background-surface/50 border border-background-border rounded-2xl p-6">
+                            <h3 className="text-sm font-bold text-text-primary mb-2 uppercase tracking-wider">AI Strategy Status</h3>
+                            <div className="flex items-center gap-2 text-xs text-text-secondary">
+                                <div className={`w-2 h-2 rounded-full ${hasRoadmap ? 'bg-success animate-pulse' : 'bg-orange-400'}`}></div>
+                                {hasRoadmap ? 'Active & Optimized' : 'Waiting for Initialization'}
+                            </div>
+                            <p className="text-[10px] text-text-secondary mt-4 leading-relaxed italic">
+                                {hasRoadmap
+                                    ? "This roadmap is generated by the AI Project Manager and synced with the team's live repository data."
+                                    : "Only the Pod Admin can trigger the initial AI strategic analysis. Contact them to begin!"}
+                            </p>
+                        </div>
+                    )}
 
                     {brain && (
                         <div
