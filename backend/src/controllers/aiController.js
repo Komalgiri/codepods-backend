@@ -103,8 +103,8 @@ export const getPodRoadmap = async (req, res) => {
         const isAdmin = membership.role === 'admin';
 
         // 2. Analyze Cache State
-        if (pod.aiRoadmap && pod.roadmapUpdatedAt) {
-            const timeSinceUpdate = now - new Date(pod.roadmapUpdatedAt);
+        if (pod.aiRoadmap) {
+            const timeSinceUpdate = pod.roadmapUpdatedAt ? (now - new Date(pod.roadmapUpdatedAt)) : (CACHE_STALE_TIME + 1000);
             const isFresh = timeSinceUpdate < CACHE_STALE_TIME;
 
             if (isFresh) {
@@ -115,7 +115,7 @@ export const getPodRoadmap = async (req, res) => {
                     returnCached = true;
                 }
             } else {
-                // If stale (> 7 days)
+                // If stale (> 7 days) or roadmapUpdatedAt was missing
                 if (isAdmin) {
                     shouldGenerate = true;
                 } else {
@@ -124,14 +124,22 @@ export const getPodRoadmap = async (req, res) => {
                 }
             }
         } else {
-            // No roadmap exists
+            // No roadmap exists at all
             if (isAdmin) {
                 shouldGenerate = true;
             } else {
+                const teamAllocation = calculateTeamAllocation(pod.members, pod.name, pod.description);
                 return res.status(200).json({
                     roadmap: [],
                     message: "No roadmap generated yet.",
-                    isAdmin: false
+                    isAdmin: false,
+                    members: teamAllocation,
+                    projectBrain: pod.projectBrain || {
+                        summary: "Strategy session pending. Contact your Pod Admin to initialize the roadmap!",
+                        decisions: [],
+                        milestones: []
+                    },
+                    pmInsights: [{ type: "suggestion", message: "Initialize your project roadmap to see real-time AI insights.", priority: "medium" }]
                 });
             }
         }
@@ -141,10 +149,21 @@ export const getPodRoadmap = async (req, res) => {
             const cachedData = typeof pod.aiRoadmap === 'string' ? JSON.parse(pod.aiRoadmap) : pod.aiRoadmap;
             const teamAllocation = calculateTeamAllocation(pod.members, pod.name, pod.description);
 
+            // Normalize roadmap structure (handle older vs newer formats)
+            let normalizedRoadmap = cachedData.roadmap || [];
+            if (normalizedRoadmap.steps) {
+                normalizedRoadmap = normalizedRoadmap.steps;
+            }
+
+            // Ensure we have insights
+            const normalizedInsights = cachedData.pmInsights || (cachedData.roadmap?.pmInsights) || [];
+
             return res.status(200).json({
                 ...cachedData,
+                roadmap: normalizedRoadmap,
+                pmInsights: normalizedInsights,
                 members: teamAllocation,
-                projectBrain: pod.projectBrain || null,
+                projectBrain: pod.projectBrain || cachedData.projectBrain || null,
                 cached: true
             });
         }
