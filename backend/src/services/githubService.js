@@ -871,7 +871,7 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
  * @param {string} accessToken - GitHub access token
  * @returns {Promise<object>} Analysis results
  */
-export const analyzeAndSaveProfile = async (userId, accessToken) => {
+export const analyzeAndSaveProfile = async (userId, accessToken, save = true) => {
   try {
     // 1. Fetch Repos using existing helper
     const repos = await fetchUserRepos(accessToken);
@@ -956,9 +956,9 @@ export const analyzeAndSaveProfile = async (userId, accessToken) => {
 
       // Special Handling: JavaScript/TypeScript/Python are versatile
       if (lang === 'JavaScript' || lang === 'TypeScript') {
-        // Assume 70% Frontend, 30% Backend (Node.js)
-        DOMAINS.Frontend.score += rankWeight * 0.7;
-        DOMAINS.Backend.score += rankWeight * 0.3;
+        // 🔄 Balancing weights for modern Fullstack development (Node.js, Next.js, etc.)
+        DOMAINS.Frontend.score += rankWeight * 0.5;
+        DOMAINS.Backend.score += rankWeight * 0.5;
       } else if (lang === 'Python') {
         // Assume 60% Data, 40% Backend
         DOMAINS.Data.score += rankWeight * 0.6;
@@ -983,7 +983,8 @@ export const analyzeAndSaveProfile = async (userId, accessToken) => {
     let finalRole = 'Developer';
 
     if (primaryDomain[1].score > 0) {
-      if (secondaryDomain[1].score > primaryDomain[1].score * 0.6) {
+      // 💡 Lower threshold for Fullstack (if secondary is > 40% of primary)
+      if (secondaryDomain[1].score > primaryDomain[1].score * 0.4) {
         // Mixed Role
         if ((primaryDomain[0] === 'Frontend' && secondaryDomain[0] === 'Backend') ||
           (primaryDomain[0] === 'Backend' && secondaryDomain[0] === 'Frontend')) {
@@ -1027,15 +1028,17 @@ export const analyzeAndSaveProfile = async (userId, accessToken) => {
       reason: `${primaryDomain[0]}-heavy profile detected with over ${languageBreakdown[0]?.percentage || 0}% focus on ${languageBreakdown[0]?.name || 'unknown languages'}.`
     };
 
-    // 6. Update User
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        techStack: topStack.slice(0, 10),
-        inferredRole: finalRole,
-        roleAnalysis: roleAnalysis
-      }
-    });
+    // 6. Update User (Only if save is true)
+    if (save) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          techStack: topStack.slice(0, 10),
+          inferredRole: finalRole,
+          roleAnalysis: roleAnalysis
+        }
+      });
+    }
 
     return {
       techStack: topStack.slice(0, 10),

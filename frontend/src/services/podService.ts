@@ -17,6 +17,8 @@ export interface PodMember {
         email: string;
         githubUsername?: string;
         reliabilityScore?: number;
+        inferredRole?: string;
+        techStack?: string[];
         dynamicsMetrics?: {
             onTimeRate?: number;
             rescueCount?: number;

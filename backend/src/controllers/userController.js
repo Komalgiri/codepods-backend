@@ -201,13 +201,16 @@ export const searchUsers = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, githubUsername } = req.body;
+    const { name, githubUsername, techStack, inferredRole, roleAnalysis } = req.body;
 
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(name && { name }),
         ...(githubUsername && { githubUsername }),
+        ...(techStack && { techStack }),
+        ...(inferredRole && { inferredRole }),
+        ...(roleAnalysis && { roleAnalysis }),
       },
       select: {
         id: true,

@@ -207,7 +207,7 @@ export const analyzeProfile = async (req, res) => {
     const decryptedToken = decryptToken(user.githubToken);
 
     const { analyzeAndSaveProfile } = await import("../services/githubService.js");
-    const result = await analyzeAndSaveProfile(userId, decryptedToken);
+    const result = await analyzeAndSaveProfile(userId, decryptedToken, false);
 
     res.json(result);
   } catch (error) {

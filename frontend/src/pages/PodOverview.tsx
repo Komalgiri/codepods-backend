@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PodTaskBoard from './PodTaskBoard';
@@ -6,7 +5,7 @@ import AIPlanningAssistant from './AIPlanningAssistant';
 import GitHubActivity from './GitHubActivity';
 import PodRewards from './PodRewards';
 import { podService, type Pod, type PodStats } from '../services/podService';
-import { HiChartBar, HiPlus, HiOutlineHome, HiOutlineMap, HiOutlineClipboardList, HiOutlineGift } from 'react-icons/hi';
+import { HiChartBar, HiPlus, HiLightningBolt, HiOutlineHome, HiOutlineMap, HiOutlineClipboardList, HiOutlineGift } from 'react-icons/hi';
 import { FaFire, FaUserShield, FaCrown, FaTools, FaGithub } from 'react-icons/fa';
 
 // Type definitions for Sidebar Items
@@ -243,9 +242,7 @@ const PodOverview = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {/* Commits */}
                             <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-primary/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Total Commits</span>
-                                </div>
+                                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Total Commits</span>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-3xl font-bold text-text-primary">{stats?.commits.value || '0'}</span>
                                     {stats?.commits.trend && (
@@ -259,9 +256,7 @@ const PodOverview = () => {
 
                             {/* Weekly Commits */}
                             <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-ai-start/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Weekly Commits</span>
-                                </div>
+                                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Weekly Commits</span>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-3xl font-bold text-text-primary">{stats?.weeklyCommits?.value || '0'}</span>
                                     <span className="text-xs font-medium text-text-secondary uppercase tracking-widest opacity-50">this week</span>
@@ -273,9 +268,7 @@ const PodOverview = () => {
 
                             {/* Pull Requests */}
                             <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Pull Requests</span>
-                                </div>
+                                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Pull Requests</span>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-3xl font-bold text-text-primary">{stats?.prs.value || '0'}</span>
                                     {stats?.prs.trend && (
@@ -289,9 +282,7 @@ const PodOverview = () => {
 
                             {/* Uptime */}
                             <div className="bg-background-surface border border-background-border rounded-xl p-6 relative overflow-hidden group hover:border-green-500/50 transition-colors">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Uptime</span>
-                                </div>
+                                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block mb-2">Uptime</span>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-3xl font-bold text-text-primary">{stats?.uptime.value || '99.9'}</span>
                                     <span className="text-lg text-text-secondary font-medium">{stats?.uptime.unit || '%'}</span>
@@ -358,7 +349,7 @@ const PodOverview = () => {
                                     </div>
                                 </div>
 
-                                {/* Project Intelligence (Brain) Section */}
+                                {/* Project Intelligence */}
                                 <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card hover:border-ai-start/30 transition-all group overflow-hidden relative">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-ai-start/5 rounded-full -mr-16 -mt-16 group-hover:bg-ai-start/10 transition-colors"></div>
                                     <div className="flex items-center justify-between mb-4 relative z-10">
@@ -435,7 +426,7 @@ const PodOverview = () => {
                                 </div>
                             </div>
 
-                            {/* Enhanced Pod Health Index */}
+                            {/* Health Index */}
                             <div className="lg:col-span-1 bg-background-surface border border-background-border rounded-2xl p-6 shadow-card flex flex-col relative group hover:border-primary/40 transition-all">
                                 <h2 className="text-sm font-bold text-text-primary mb-6 flex items-center gap-2">
                                     <HiChartBar className="w-4 h-4 text-primary" />
@@ -466,12 +457,8 @@ const PodOverview = () => {
                                     </div>
                                 </div>
 
-                                {/* Quick Solves Section */}
                                 <div className="w-full space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">⚡ AI Quick Solves</h3>
-                                    </div>
-
+                                    <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">⚡ AI Quick Solves</h3>
                                     <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                                         {health?.quickSolves && health.quickSolves.length > 0 ? (
                                             health.quickSolves.map((solve: any) => (
@@ -501,7 +488,7 @@ const PodOverview = () => {
                         </div>
 
                         {/* Active Contributors */}
-                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card">
+                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card mt-8">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-lg font-bold text-text-primary">Active Contributors</h2>
                                 <button
@@ -514,15 +501,15 @@ const PodOverview = () => {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {pod.members.map(member => {
-                                    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-                                    const isAdmin = pod.members.find(m => m.userId === currentUser.id)?.role === 'admin';
                                     const isSelf = member.userId === currentUser.id;
+                                    const isAdmin = pod.members.find(m => m.userId === currentUser.id)?.role === 'admin';
 
                                     return (
                                         <div key={member.id} className="bg-background/30 border border-background-border rounded-xl p-4 flex items-center gap-4 hover:bg-background/50 transition-colors group relative">
                                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.user?.name}`} alt={member.user?.name} className="w-10 h-10 rounded-full bg-background-surface" />
                                             <div className="flex-1 min-w-0">
                                                 <h3 className="text-sm font-bold text-text-primary truncate">{member.user?.name} {isSelf && "(You)"}</h3>
+                                                <p className="text-[10px] text-text-secondary font-medium truncate mb-1">{member.user?.inferredRole || 'Developer'}</p>
                                                 <div className="flex items-center gap-2">
                                                     {isAdmin && !isSelf ? (
                                                         <select
@@ -544,7 +531,6 @@ const PodOverview = () => {
                                                         </span>
                                                     )}
 
-                                                    {/* Reliability Miniature Meter */}
                                                     <div className="flex items-center gap-1.5 ml-auto bg-background/50 px-2 py-0.5 rounded border border-background-border/50 group-hover:border-primary/30 transition-colors" title={`Reliability: ${Math.round(member.user?.reliabilityScore || 100)}%`}>
                                                         <HiChartBar className={`w-3 h-3 ${(member.user?.reliabilityScore || 100) > 80 ? 'text-primary' :
                                                             (member.user?.reliabilityScore || 100) > 50 ? 'text-yellow-500' : 'text-red-500'
@@ -571,6 +557,84 @@ const PodOverview = () => {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        </div>
+
+                        {/* AI Team Gap Analysis */}
+                        <div className="bg-background-surface border border-background-border rounded-2xl p-6 shadow-card overflow-hidden relative group mt-8">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform duration-500 group-hover:scale-110"></div>
+
+                            <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
+                                <div className="flex-1 space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                                            <HiLightningBolt className="text-primary w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-bold text-text-primary">AI Team Gap Analysis</h2>
+                                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em]">Strategic Hiring Recommendations</p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm text-text-secondary leading-relaxed max-w-2xl">
+                                        Our analysis of your current team's tech stack and project velocity shows a strong foundation in
+                                        <span className="text-text-primary font-bold"> {
+                                            Array.from(new Set(pod.members.flatMap(m => m.user?.techStack || []))).slice(0, 3).join(', ')
+                                        }</span>. However, to reach peak efficiency, we've identified the following gaps:
+                                    </p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                        <div className="p-4 bg-background/50 rounded-xl border border-background-border/50 hover:border-primary/30 transition-all">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="w-2 h-2 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.5)]"></div>
+                                                <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Required: {
+                                                    !pod.members.some(m => (m.user?.inferredRole || '').toLowerCase().includes('backend')) ? 'Backend Architect' :
+                                                        !pod.members.some(m => (m.user?.inferredRole || '').toLowerCase().includes('devops')) ? 'DevOps Engineer' : 'QA/Test Specialist'
+                                                }</span>
+                                            </div>
+                                            <p className="text-[11px] text-text-secondary">Current velocity is bottlenecked by {
+                                                !pod.members.some(m => (m.user?.inferredRole || '').toLowerCase().includes('backend')) ? 'database optimization and API scaling' :
+                                                    !pod.members.some(m => (m.user?.inferredRole || '').toLowerCase().includes('devops')) ? 'deployment friction and CI/CD maintenance' : 'untested edge cases and regression risks'
+                                            }.</p>
+                                        </div>
+
+                                        <div className="p-4 bg-background/50 rounded-xl border border-background-border/50 hover:border-primary/30 transition-all">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]"></div>
+                                                <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Skill Pivot: {
+                                                    pod.members.flatMap(m => m.user?.techStack || []).includes('Python') ? 'Data Engineering' : 'Real-time Systems'
+                                                }</span>
+                                            </div>
+                                            <p className="text-[11px] text-text-secondary">Leverage your existing {
+                                                pod.members.flatMap(m => m.user?.techStack || []).includes('Python') ? 'Python expertise to build AI pipelines' : 'TypeScript foundation for WebSockets implementation'
+                                            }.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="w-full md:w-64 space-y-4 p-6 rounded-2xl bg-primary/5 border border-primary/10">
+                                    <div className="text-center space-y-1">
+                                        <div className="text-[10px] font-black text-primary uppercase tracking-widest">Team Score</div>
+                                        <div className="text-4xl font-black text-text-primary">{Math.min(100, pod.members.length * 20)}%</div>
+                                        <div className="text-[9px] font-bold text-text-secondary uppercase">Composition Index</div>
+                                    </div>
+                                    <div className="space-y-2 pt-2">
+                                        <div className="flex justify-between text-[10px] font-bold items-center">
+                                            <span className="text-text-secondary">FRONTEND</span>
+                                            <span className="text-text-primary">{Math.round((pod.members.filter(m => (m.user?.inferredRole || '').toLowerCase().includes('frontend')).length / pod.members.length) * 100) || 0}%</span>
+                                        </div>
+                                        <div className="h-1 w-full bg-background-border rounded-full overflow-hidden">
+                                            <div className="h-full bg-primary" style={{ width: `${(pod.members.filter(m => (m.user?.inferredRole || '').toLowerCase().includes('frontend')).length / pod.members.length) * 100 || 0}%` }}></div>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] font-bold items-center mt-3">
+                                            <span className="text-text-secondary">BACKEND</span>
+                                            <span className="text-text-primary">{Math.round((pod.members.filter(m => (m.user?.inferredRole || '').toLowerCase().includes('backend')).length / pod.members.length) * 100) || 0}%</span>
+                                        </div>
+                                        <div className="h-1 w-full bg-background-border rounded-full overflow-hidden">
+                                            <div className="h-full bg-cyan-500" style={{ width: `${(pod.members.filter(m => (m.user?.inferredRole || '').toLowerCase().includes('backend')).length / pod.members.length) * 100 || 0}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -719,32 +783,30 @@ const PodOverview = () => {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <svg className="w-3.5 h-3.5 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-                                                    <span className="text-sm font-bold text-text-primary truncate">{repo.name}</span>
-                                                    {repo.private && <span className="text-[8px] font-bold bg-background-border px-1.5 py-0.5 rounded text-text-secondary">PRIVATE</span>}
+                                                    <span className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">{repo.name}</span>
                                                 </div>
-                                                <div className="text-[10px] text-text-secondary truncate">{repo.description || "No description provided"}</div>
+                                                <div className="text-[10px] text-text-secondary italic">{repo.description || "No description provided"}</div>
                                             </div>
-                                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <svg className="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                            <div className="flex items-center gap-3 ml-4">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[10px] font-bold text-text-primary">{repo.stargazers_count}</span>
+                                                    <span className="text-[8px] text-text-secondary uppercase">Stars</span>
+                                                </div>
+                                                <div className="w-1 h-8 bg-background-border rounded-full"></div>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[10px] font-bold text-text-primary">{repo.language || "N/A"}</span>
+                                                    <span className="text-[8px] text-text-secondary uppercase">Stack</span>
+                                                </div>
                                             </div>
                                         </button>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="py-12 bg-background/20 rounded-2xl border border-dashed border-background-border flex flex-col items-center justify-center gap-4 text-center px-6">
-                                    <div className="w-12 h-12 rounded-full bg-background-surface flex items-center justify-center text-text-secondary">
-                                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                                <div className="text-center py-12">
+                                    <div className="w-12 h-12 rounded-full bg-background/50 border border-background-border flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-6 h-6 text-text-secondary opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-text-primary mb-1">No Repositories Found</div>
-                                        <p className="text-xs text-text-secondary">Make sure your GitHub account is linked and has public repositories.</p>
-                                    </div>
-                                    <button
-                                        onClick={() => navigate('/profile')}
-                                        className="text-xs font-bold text-primary hover:underline"
-                                    >
-                                        Check Connections →
-                                    </button>
+                                    <p className="text-sm text-text-secondary italic">No repositories found.</p>
                                 </div>
                             )}
                         </div>
@@ -763,54 +825,51 @@ const PodOverview = () => {
                                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
-                        <p className="text-text-secondary text-sm mb-6">Find users by name or email to invite them to this pod.</p>
 
-                        <div className="space-y-4">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    autoFocus
-                                    placeholder="Search users..."
-                                    value={userSearchQuery}
-                                    onChange={(e) => handleUserSearch(e.target.value)}
-                                    className="w-full bg-background border border-background-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary/50 transition-colors"
-                                />
-                                {isSearchingUsers && (
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="relative mb-6">
+                            <input
+                                type="text"
+                                autoFocus
+                                placeholder="Search users..."
+                                value={userSearchQuery}
+                                onChange={(e) => handleUserSearch(e.target.value)}
+                                className="w-full bg-background border border-background-border rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-primary/50 transition-colors"
+                            />
+                            {isSearchingUsers && (
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="max-h-60 overflow-y-auto space-y-2 custom-scrollbar pr-2">
-                                {userSearchResults.length > 0 ? (
-                                    userSearchResults.map((user) => (
-                                        <div key={user.id} className="bg-background/40 border border-background-border rounded-xl p-3 flex items-center justify-between hover:border-primary/30 transition-all group">
-                                            <div className="flex items-center gap-3">
-                                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt={user.name} className="w-8 h-8 rounded-full bg-background-surface" />
-                                                <div>
-                                                    <div className="text-sm font-bold text-text-primary">{user.name}</div>
-                                                    <div className="text-[10px] text-text-secondary">{user.email}</div>
-                                                </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                            {userSearchResults.length > 0 ? (
+                                userSearchResults.map((user) => (
+                                    <div key={user.id} className="bg-background/40 border border-background-border rounded-xl p-3 flex items-center justify-between hover:border-primary/30 transition-all group">
+                                        <div className="flex items-center gap-3">
+                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} alt={user.name} className="w-8 h-8 rounded-full bg-background-surface" />
+                                            <div>
+                                                <div className="text-sm font-bold text-text-primary">{user.name}</div>
+                                                <div className="text-[10px] text-text-secondary">{user.email}</div>
                                             </div>
-                                            <button
-                                                onClick={() => handleAddMember(user.id)}
-                                                disabled={updating || pod?.members.some(m => m.userId === user.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${pod?.members.some(m => m.userId === user.id)
-                                                    ? 'bg-background-border/50 text-text-secondary cursor-not-allowed'
-                                                    : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
-                                                    }`}
-                                            >
-                                                {updating ? '...' : pod?.members.some(m => m.userId === user.id) ? 'ALREADY IN' : 'ADD'}
-                                            </button>
                                         </div>
-                                    ))
-                                ) : userSearchQuery.length >= 2 ? (
-                                    <div className="text-center py-6 text-text-secondary text-xs italic">No users found for "{userSearchQuery}"</div>
-                                ) : (
-                                    <div className="text-center py-6 text-text-secondary text-xs italic opacity-50">Type at least 2 characters to search...</div>
-                                )}
-                            </div>
+                                        <button
+                                            onClick={() => handleAddMember(user.id)}
+                                            disabled={updating || pod?.members.some(m => m.userId === user.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${pod?.members.some(m => m.userId === user.id)
+                                                ? 'bg-background-border/50 text-text-secondary cursor-not-allowed'
+                                                : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
+                                                }`}
+                                        >
+                                            {updating ? '...' : pod?.members.some(m => m.userId === user.id) ? 'ALREADY IN' : 'ADD'}
+                                        </button>
+                                    </div>
+                                ))
+                            ) : userSearchQuery.length >= 2 ? (
+                                <div className="text-center py-6 text-text-secondary text-xs italic">No users found for "{userSearchQuery}"</div>
+                            ) : (
+                                <div className="text-center py-6 text-text-secondary text-xs italic opacity-50">Type at least 2 characters to search...</div>
+                            )}
                         </div>
                     </div>
                 </div>

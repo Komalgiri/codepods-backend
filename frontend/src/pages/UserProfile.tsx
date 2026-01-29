@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
 import { githubService } from '../services/githubService';
-import { FaGithub, FaFire, FaCertificate, FaMedal, FaRocket, FaBug, FaEdit, FaUserPlus } from 'react-icons/fa';
+import { FaGithub, FaFire, FaCertificate, FaMedal, FaRocket, FaBug, FaEdit } from 'react-icons/fa';
 import { HiOutlineLocationMarker, HiOutlineMail, HiOutlineGlobeAlt, HiTrendingUp, HiUsers, HiLightningBolt, HiChartBar, HiRefresh } from 'react-icons/hi';
 
 interface UserProfileProps {
@@ -13,12 +13,22 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
     const navigate = useNavigate();
     const [profileData, setProfileData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [scanResult, setScanResult] = useState<any>(null);
+    const [showScanModal, setShowScanModal] = useState(false);
+    const [editForm, setEditForm] = useState({ name: '', location: '', website: '' });
 
     useEffect(() => {
         const fetchProfile = async () => {
             try {
                 const data = await userService.getProfile();
                 setProfileData(data);
+                setEditForm({
+                    name: data.user.name || '',
+                    location: data.user.location || 'Remote',
+                    website: data.user.website || 'codepods.io'
+                });
             } catch (error) {
                 console.error("Failed to fetch profile", error);
                 // Fallback to local storage if API fails
@@ -43,6 +53,51 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
     if (!profileData) return null;
 
     const { user, pods, totalPoints, activities, badgeCount } = profileData;
+
+    const handleEditProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await userService.updateProfile({ name: editForm.name });
+            const data = await userService.getProfile();
+            setProfileData(data);
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Failed to update profile", error);
+        }
+    };
+
+    const handleRescanProfile = async () => {
+        setIsAnalyzing(true);
+        try {
+            const result = await githubService.analyzeProfile();
+            setScanResult(result);
+            setShowScanModal(true);
+        } catch (error) {
+            console.error("Failed to rescan profile", error);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleApplyScan = async () => {
+        if (!scanResult) return;
+        try {
+            setIsLoading(true);
+            await userService.updateProfile({
+                techStack: scanResult.techStack,
+                inferredRole: scanResult.inferredRole,
+                roleAnalysis: scanResult.roleAnalysis
+            });
+            const data = await userService.getProfile();
+            setProfileData(data);
+            setShowScanModal(false);
+        } catch (error) {
+            console.error("Failed to apply results", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     return (
         <div className={`min-h-screen bg-background text-text-primary font-sans selection:bg-primary selection:text-white ${embed ? 'min-h-0' : ''}`}>
@@ -82,10 +137,14 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                             <div className="flex flex-wrap items-center gap-3 mb-2">
                                 <h1 className="text-3xl font-bold text-text-primary">{user.name}</h1>
                                 {user.githubId && (
-                                    <span className="bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <FaGithub className="w-3 h-3" />
-                                        GitHub Connected
-                                    </span>
+                                    <button
+                                        onClick={handleRescanProfile}
+                                        disabled={isAnalyzing}
+                                        className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+                                    >
+                                        <FaGithub className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                                        {isAnalyzing ? 'Analyzing...' : 'Rescan Profile'}
+                                    </button>
                                 )}
                             </div>
                             <p className="text-text-secondary text-lg mb-4 font-medium">@{user.githubId || 'username'} • {user.role || 'Developer'}</p>
@@ -107,11 +166,10 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                         </div>
 
                         <div className="flex gap-3">
-                            <button className="px-6 py-2.5 bg-cyan-500 text-background font-bold rounded-lg hover:bg-cyan-400 transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                                <FaUserPlus className="w-4 h-4" />
-                                Follow
-                            </button>
-                            <button className="px-6 py-2.5 bg-background-surface border border-background-border font-bold rounded-lg hover:bg-background-border/50 transition-colors flex items-center gap-2">
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="px-6 py-2.5 bg-background-surface border border-background-border font-bold rounded-lg hover:bg-background-border/50 transition-colors flex items-center gap-2"
+                            >
                                 <FaEdit className="w-4 h-4" />
                                 Edit Profile
                             </button>
@@ -378,7 +436,129 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                     </div>
                 </div>
             </main>
+            {/* Edit Modal */}
+            {isEditing && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+                    <div className="bg-background-surface border border-background-border rounded-2xl w-full max-w-md p-8 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-text-primary">Edit Profile</h2>
+                            <button
+                                onClick={() => setIsEditing(false)}
+                                className="text-text-secondary hover:text-text-primary transition-colors text-2xl"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditProfile} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Display Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full bg-background border border-background-border rounded-lg px-4 py-2.5 text-text-primary focus:border-primary outline-none"
+                                    placeholder="Your Name"
+                                />
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditing(false)}
+                                    className="flex-1 px-6 py-2.5 bg-background-surface border border-background-border font-bold rounded-lg hover:bg-background-border/50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-6 py-2.5 bg-primary text-background font-bold rounded-lg hover:opacity-90 transition-opacity"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Scan Preview Modal */}
+            {showScanModal && scanResult && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-background/90 backdrop-blur-xl">
+                    <div className="bg-background-surface border border-background-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                        <div className="p-8 border-b border-background-border bg-gradient-to-br from-primary/10 to-transparent">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h2 className="text-3xl font-bold text-text-primary flex items-center gap-3">
+                                        <HiLightningBolt className="text-primary w-8 h-8" />
+                                        Profile Re-Scan Results
+                                    </h2>
+                                    <p className="text-text-secondary mt-1">Our AI analyzed your recent GitHub activity. Here's what we found:</p>
+                                </div>
+                                <button onClick={() => setShowScanModal(false)} className="text-text-secondary hover:text-text-primary text-2xl group transition-all">
+                                    <span className="inline-block group-hover:rotate-90 transition-transform">&times;</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                            {/* Suggested Role */}
+                            <div className="bg-background-border/20 rounded-2xl p-6 border border-background-border/50">
+                                <div className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-2">Suggested Role</div>
+                                <div className="text-2xl font-bold text-white mb-2">{scanResult.inferredRole}</div>
+                                <p className="text-sm text-text-secondary leading-relaxed italic pr-4">
+                                    "{scanResult.roleAnalysis?.reason}"
+                                </p>
+                            </div>
+
+                            {/* Tech Stack Chips */}
+                            <div>
+                                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mb-4">Detected Tech Stack</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {scanResult.techStack.map((tech: string) => (
+                                        <span key={tech} className="px-4 py-2 bg-background border border-background-border rounded-xl text-xs font-bold text-text-primary hover:border-primary/50 transition-colors">
+                                            {tech}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Detailed Language Breakdown */}
+                            <div className="space-y-4">
+                                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em]">Detailed Analytics</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {(scanResult.roleAnalysis?.languages || []).map((lang: any) => (
+                                        <div key={lang.name} className="space-y-2">
+                                            <div className="flex justify-between items-center text-xs font-bold">
+                                                <span className="text-text-primary">{lang.name}</span>
+                                                <span className="text-primary">{lang.percentage}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-background-border/30 rounded-full overflow-hidden">
+                                                <div className="h-full bg-primary" style={{ width: `${lang.percentage}%` }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 bg-background-border/10 flex gap-4">
+                            <button
+                                onClick={() => setShowScanModal(false)}
+                                className="flex-1 px-8 py-4 bg-background-surface border border-background-border font-bold rounded-2xl hover:bg-background-border/50 transition-colors"
+                            >
+                                Discard Changes
+                            </button>
+                            <button
+                                onClick={handleApplyScan}
+                                className="flex-[2] px-12 py-4 bg-primary text-background font-bold rounded-2xl hover:opacity-90 transition-all shadow-[0_4px_20px_rgba(88,166,154,0.4)]"
+                            >
+                                Apply to My Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
+
     );
 };
 

@@ -16,22 +16,23 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 🛡️ Security: Helmet for HTTP headers protection
+// Security: Helmet for HTTP headers protection
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for API-only server
   crossOriginEmbedderPolicy: false,
 }));
 
-// ✅ Allowed frontend origins (environment-based for production)
+// Allowed frontend origins (environment-based for production)
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.FRONTEND_URL || "https://your-frontend-name.vercel.app"]
+  ? [process.env.FRONTEND_URL || "https://codepod-six.vercel.app"]
   : [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:5174",
+    "https://codepod-six.vercel.app",
   ];
 
-// ✅ CORS setup
+// CORS setup
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -41,7 +42,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
-        console.log("❌ Blocked by CORS:", origin);
+        console.log(" Blocked by CORS:", origin);
         return callback(new Error("Not allowed by CORS"));
       }
     },
@@ -51,10 +52,10 @@ app.use(
 
 app.use(express.json());
 
-// 🛡️ Security: Rate limiting for all API routes
+// Security: Rate limiting for all API routes
 app.use("/api/", apiLimiter);
 
-// ✅ Routes
+// Routes
 app.use("/api/users", userRoutes);
 app.use("/api/pods", podRoutes);
 app.use("/api/tasks", taskRoutes);
@@ -63,12 +64,12 @@ app.use("/api/auth/github", githubAuth);
 app.use("/api/github", githubRoutes);
 app.use("/api/ai", aiRoutes);
 
-// ✅ Health check route
+// Health check route
 app.get("/", (req, res) => {
   res.json({ message: "CodePods backend running ✅" });
 });
 
-// ✅ Start server
+// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
