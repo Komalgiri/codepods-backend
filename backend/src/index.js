@@ -11,10 +11,13 @@ import githubAuth from "./routes/githubAuth.js";
 import githubRoutes from "./routes/githubRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
+import compression from "compression";
 
 dotenv.config();
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy
+app.disable('x-powered-by'); // Security & Performance (minor)
+app.use(compression()); // Gzip compression
 const PORT = process.env.PORT || 5000;
 
 // Security: Helmet for HTTP headers protection

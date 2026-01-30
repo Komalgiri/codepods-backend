@@ -152,42 +152,49 @@ export const getPodLeaderboard = async (req, res) => {
       });
     }
 
-    // Get all members of the pod
+    // Optimized Leaderboard Fetch
+    // 1. Fetch members (lightweight)
     const members = await prisma.podMember.findMany({
       where: { podId },
       include: {
         user: {
-          include: {
-            rewards: {
-              select: { points: true }
-            },
-            activities: {
-              where: { podId }, // Points specific to THIS pod
-              select: { value: true }
-            },
-          },
-        },
-      },
+          select: {
+            id: true, name: true, email: true, githubUsername: true,
+            rewards: { select: { badges: true } } // Still need badges
+          }
+        }
+      }
     });
 
-    // Calculate total points for each member and sort
+    // 2. Fetch Aggregated Points (Sum) per user for this pod
+    const pointAggregations = await prisma.activity.groupBy({
+      by: ['userId'],
+      where: { podId },
+      _sum: {
+        value: true
+      }
+    });
+
+    // Map aggregations for O(1) lookups
+    const pointsMap = {};
+    pointAggregations.forEach(agg => {
+      pointsMap[agg.userId] = agg._sum.value || 0;
+    });
+
+    // 3. Construct Leaderboard
     const leaderboard = members
       .map((member) => {
-        // Loophole Fix: Only count activities and rewards linked to THIS POD
-        // Note: Reward schema doesn't have podId currently, so we use activities which DO have podId.
-        // If we want special 'Pod Rewards', we'd need a podId on Reward model too.
-        // For now, let's count all activities in this pod.
-        const podPoints = member.user.activities.reduce((sum, a) => sum + (a.value || 0), 0);
+        const podPoints = pointsMap[member.user.id] || 0;
 
         return {
           id: member.user.id,
           name: member.user.name,
           email: member.user.email,
           role: member.role,
-          totalPoints: podPoints, // Pod-specific points
+          totalPoints: podPoints,
           githubUsername: member.user.githubUsername,
           status: member.status,
-          badges: [...new Set(member.user.rewards.flatMap(r => r.badges || []))], // Badges are still global 'bragging rights'
+          badges: [...new Set(member.user.rewards.flatMap(r => r.badges || []))],
           level: Math.floor(podPoints / 500) + 1,
         };
       })
