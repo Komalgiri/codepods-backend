@@ -196,7 +196,7 @@ export const getPodRoadmap = async (req, res) => {
                 ${brainContext}
                 
                 TEAM:
-                ${pod.members.map(m => `- ${m.user.name} (Role: ${m.role}, Stack: ${m.user.techStack?.join(', ') || 'Generalist'})`).join('\n')}
+                ${pod.members.map(m => `- Name: ${m.user.name}, ID: ${m.user.id}, Role: ${m.role}, Stack: ${m.user.techStack?.join(', ') || 'Generalist'}`).join('\n')}
                 
                 RECENT VELOCITY:
                 ${activityContext || 'No recent activity.'}
@@ -213,14 +213,7 @@ export const getPodRoadmap = async (req, res) => {
                       "title": "Strategy & Scope Definition", 
                       "description": "Establish clear MVP boundaries and tech debt audit.", 
                       "status": "IN PROGRESS", 
-                      "tasks": [{ "name": "Formalize MVP Scope", "status": "pending", "assignee": "Lead" }] 
-                    },
-                    { 
-                      "id": 2, 
-                      "title": "Core Architecture", 
-                      "description": "Setting up the foundation for scalability.", 
-                      "status": "UPCOMING", 
-                      "tasks": [] 
+                      "tasks": [{ "name": "Formalize MVP Scope", "status": "pending", "assigneeId": "User-ID-From-Team-List", "assignee": "Member Name" }] 
                     }
                   ],
                   "projectBrain": {
@@ -254,6 +247,26 @@ export const getPodRoadmap = async (req, res) => {
                     if (jsonMatch) {
                         const data = JSON.parse(jsonMatch[0]);
                         console.log(`[AI] Successfully parsed JSON structure. Roadmap steps count: ${data.roadmap?.length || 0}`);
+
+                        // VALIDATION: Sanitize Hallucinated User IDs
+                        if (data.roadmap) {
+                            data.roadmap.forEach(phase => {
+                                if (phase.tasks) {
+                                    phase.tasks.forEach(task => {
+                                        if (task.assigneeId) {
+                                            const validMember = pod.members.find(m => m.user.id === task.assigneeId);
+                                            if (!validMember) {
+                                                console.warn(`[AI] Invalid/Hallucinated assigneeId ${task.assigneeId} detected. Unassigning.`);
+                                                task.assigneeId = null;
+                                                task.assignee = "Unassigned";
+                                            } else {
+                                                task.assignee = validMember.user.name; // Ensure name matches ID
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
 
                         projectBrain = data.projectBrain || projectBrain;
                         confidence = data.confidence || confidence;

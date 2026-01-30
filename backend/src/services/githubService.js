@@ -728,6 +728,18 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
     if (!accessToken) {
       // Falling back to public API if possible, or failing
       results.errors.push("No admin with GitHub token found to sync private repos. Trying public fetch.");
+    } else {
+      // Decrypt if encrypted
+      if (isEncrypted(accessToken)) {
+        try {
+          accessToken = decrypt(accessToken);
+        } catch (err) {
+          console.error("Failed to decrypt GitHub token:", err.message);
+          // fallback to raw or fail?
+          results.errors.push("Failed to decrypt admin token.");
+          return results;
+        }
+      }
     }
 
     const syncWindow = new Date();

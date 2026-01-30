@@ -292,42 +292,34 @@ export const getPodStats = async (req, res) => {
       });
     }
 
-    // Parallel fetch for potential performance win
-    const [tasks, commitActivities, prActivities] = await Promise.all([
-      prisma.task.findMany({
-        where: { podId },
-        select: { status: true }
-      }),
-      prisma.activity.findMany({
-        where: { podId, type: 'commit' },
-        select: { id: true }
-      }),
-      prisma.activity.findMany({
-        where: {
-          podId,
-          type: { in: ['pr_opened', 'pr_merged'] }
-        },
-        select: { id: true }
-      })
-    ]);
+    // Optimized parallel fetch
+    // 1. Task Stats
+    const tasks = await prisma.task.findMany({
+      where: { podId },
+      select: { status: true } // We need status to calculate completion rate
+    });
 
-    // Calculate Task Stats
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'done').length;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    // Calculate GitHub Stats
-    const commitsCount = commitActivities.length;
-    const prsCount = prActivities.length;
-
-    // Weekly Stats (last 7 days)
+    // 2. Activity Stats (Using count() for O(1) efficiency)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Note: activity.createdAt is what we check
-    // Since we didn't include createdAt in the initial select, we need to add it or fetch again
-    // Let's refetch with createdAt for accuracy
-    const [weeklyCommitsCount, weeklyPrsCount] = await Promise.all([
+    const [commitsCount, prsCount, weeklyCommitsCount, weeklyPrsCount] = await Promise.all([
+      // Total Commits
+      prisma.activity.count({
+        where: { podId, type: 'commit' }
+      }),
+      // Total PRs (Opened + Merged)
+      prisma.activity.count({
+        where: {
+          podId,
+          type: { in: ['pr_opened', 'pr_merged'] }
+        }
+      }),
+      // Weekly Commits
       prisma.activity.count({
         where: {
           podId,
@@ -335,6 +327,7 @@ export const getPodStats = async (req, res) => {
           createdAt: { gte: sevenDaysAgo }
         }
       }),
+      // Weekly PRs
       prisma.activity.count({
         where: {
           podId,
@@ -410,6 +403,18 @@ export const updatePod = async (req, res) => {
       syncRepoActivity(podId, repoOwner, repoName)
         .then(results => console.log(`[DEBUG] Sync completed for pod ${podId}:`, results))
         .catch(err => console.error(`[ERROR] Sync failed for pod ${podId}:`, err));
+
+      // Invalidate AI roadmap
+      await prisma.pod.update({
+        where: { id: podId },
+        data: { aiRoadmap: null, roadmapUpdatedAt: null }
+      });
+    } else if (description) {
+      // Also invalidate if description changes significanly
+      await prisma.pod.update({
+        where: { id: podId },
+        data: { aiRoadmap: null, roadmapUpdatedAt: null }
+      });
     }
 
     return res.status(200).json({
@@ -666,6 +671,12 @@ export const leavePod = async (req, res) => {
 
     await prisma.podMember.delete({
       where: { id: membership.id },
+    });
+
+    // Invalidate AI roadmap as team structure changed
+    await prisma.pod.update({
+      where: { id: podId },
+      data: { aiRoadmap: null, roadmapUpdatedAt: null }
     });
 
     res.json({ message: "You have left the pod." });

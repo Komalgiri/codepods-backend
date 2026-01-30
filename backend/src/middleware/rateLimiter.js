@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 /**
  * General API rate limiter
@@ -6,34 +6,40 @@ import rateLimit from 'express-rate-limit';
  */
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: 100,
+    keyGenerator: (req) => ipKeyGenerator(req), // ✅ IPv6-safe
     message: {
         error: 'Too many requests from this IP, please try again later.',
     },
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    // Skip rate limiting for successful requests to avoid penalizing normal usage
+    standardHeaders: true,
+    legacyHeaders: false,
     skipSuccessfulRequests: false,
 });
 
 /**
  * Strict rate limiter for authentication endpoints
- * 5 attempts per 5 minutes per User Email (or IP)
+ * 5 attempts per 5 minutes per Email (or fallback to IP)
  */
 export const authLimiter = rateLimit({
     windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 5, // Limit to 5 attempts per windowMs
+    max: 5,
     keyGenerator: (req) => {
-        // Use normalized email as key if present (for "per user ID" limiting), otherwise fall back to IP
-        const email = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : req.ip;
-        return email;
+        const email = req.body?.email?.toLowerCase().trim();
+
+        // Prefer user identity over IP
+        if (email) {
+            return `email:${email}`;
+        }
+
+        // Fallback to IPv6-safe IP key
+        return ipKeyGenerator(req);
     },
     message: {
         error: 'Too many login attempts. Please try again after 5 minutes.',
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: true, // Don't count successful logins/signups
+    skipSuccessfulRequests: true, // Don't penalize successful logins
 });
 
 /**
@@ -42,7 +48,8 @@ export const authLimiter = rateLimit({
  */
 export const syncLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // Limit each IP to 10 sync requests per hour
+    max: 10,
+    keyGenerator: (req) => ipKeyGenerator(req),
     message: {
         error: 'Too many sync requests. Please wait before syncing again.',
     },
@@ -51,12 +58,13 @@ export const syncLimiter = rateLimit({
 });
 
 /**
- * Rate limiter for AI operations (expensive)
+ * Rate limiter for AI operations (expensive endpoints)
  * 20 requests per hour per IP
  */
 export const aiLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // Limit each IP to 20 AI requests per hour
+    max: 20,
+    keyGenerator: (req) => ipKeyGenerator(req),
     message: {
         error: 'Too many AI requests. Please wait before generating more roadmaps.',
     },
@@ -70,7 +78,8 @@ export const aiLimiter = rateLimit({
  */
 export const searchLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 30, // Limit each IP to 30 search requests per minute
+    max: 30,
+    keyGenerator: (req) => ipKeyGenerator(req),
     message: {
         error: 'Too many search requests. Please slow down.',
     },

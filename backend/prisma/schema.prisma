@@ -102,10 +102,15 @@ model Activity {
   value     Int      @default(0)  // points for this activity
   userId    String
   podId     String?
+  sourceId  String?  // Unique ID from the source (e.g., commit SHA, PR ID) to prevent duplicates at DB level
 
   user      User     @relation(fields: [userId], references: [id])
   pod       Pod?     @relation(fields: [podId], references: [id])
   createdAt DateTime @default(now())
+
+  @@unique([userId, type, sourceId])
+  @@index([podId, createdAt])
+  @@index([userId, type])
 }
 
 model Reward {
