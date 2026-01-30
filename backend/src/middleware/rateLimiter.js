@@ -18,17 +18,22 @@ export const apiLimiter = rateLimit({
 
 /**
  * Strict rate limiter for authentication endpoints
- * 5 requests per 15 minutes per IP
+ * 5 attempts per 5 minutes per User Email (or IP)
  */
 export const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // Limit each IP to 5 login attempts per windowMs
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 5, // Limit to 5 attempts per windowMs
+    keyGenerator: (req) => {
+        // Use normalized email as key if present (for "per user ID" limiting), otherwise fall back to IP
+        const email = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : req.ip;
+        return email;
+    },
     message: {
-        error: 'Too many login attempts from this IP, please try again after 15 minutes.',
+        error: 'Too many login attempts. Please try again after 5 minutes.',
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: true, // Don't count successful logins
+    skipSuccessfulRequests: true, // Don't count successful logins/signups
 });
 
 /**
