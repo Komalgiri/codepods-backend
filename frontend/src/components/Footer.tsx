@@ -27,11 +27,11 @@ const Footer = () => {
           <div className="col-span-2 lg:col-span-2">
             <div className="flex items-center gap-2 mb-6 pointer-events-none">
               <HiOutlineCubeTransparent className="w-8 h-8 text-primary" />
-              <span className="text-2xl font-black tracking-tighter text-white">CodePods</span>
+              <span className="text-2xl font-black tracking-tighter text-white">CodePodAI</span>
             </div>
             <p className="text-muted text-sm leading-relaxed max-w-xs mb-8">
               High-velocity orchestration for modern development teams.
-              Build, scale, and ship smarter with CodePods.
+              Build, scale, and ship smarter with CodePodAI.
             </p>
             <div className="flex items-center gap-5">
               {[SiGithub, SiX, SiDiscord, SiLinkedin].map((Icon, idx) => (
@@ -64,7 +64,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-muted/60 text-xs font-bold tracking-widest uppercase">
-            © {currentYear} CodePods Inc. Crafted with precision for devs.
+            © {currentYear} CodePodAI Inc. Crafted with precision for devs.
           </p>
           <div className="flex gap-8">
             <a href="#" className="text-muted/60 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors">Privacy Policy</a>

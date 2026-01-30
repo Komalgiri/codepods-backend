@@ -46,7 +46,7 @@ const HowItWorks = () => {
                         Mastering the <span className="text-primary">Lifecycle</span>
                     </motion.h2>
                     <p className="text-muted text-lg max-w-2xl mx-auto uppercase tracking-widest font-bold">
-                        The CodePods workflow engineered for precision.
+                        The CodePodAI workflow engineered for precision.
                     </p>
                 </div>
 

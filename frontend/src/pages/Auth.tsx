@@ -97,7 +97,7 @@ const Auth = () => {
                         <div className="p-1 rounded-lg">
                             <HiOutlineCubeTransparent className="w-6 h-6 text-primary" />
                         </div>
-                        <span className="text-xl font-bold tracking-tight">CodePods</span>
+                        <span className="text-xl font-bold tracking-tight">CodePodAI</span>
                     </div>
 
                     <div className="flex gap-8 text-sm font-medium text-text-secondary">

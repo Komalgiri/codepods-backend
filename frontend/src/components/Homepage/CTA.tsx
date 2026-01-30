@@ -37,7 +37,7 @@ const CTA = () => {
 
           <p className="text-muted text-lg md:text-xl mb-12 max-w-xl mx-auto leading-relaxed">
             Join 2,000+ top-tier devs shipping faster, smarter,
-            and more collaboratively with CodePods.
+            and more collaboratively with CodePodAI.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

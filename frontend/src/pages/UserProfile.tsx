@@ -27,7 +27,7 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                 setEditForm({
                     name: data.user.name || '',
                     location: data.user.location || 'Remote',
-                    website: data.user.website || 'codepods.io'
+                    website: data.user.website || 'codepodai.io'
                 });
             } catch (error) {
                 console.error("Failed to fetch profile", error);
@@ -106,7 +106,7 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                 <nav className="border-b border-background-border/50 bg-background/50 backdrop-blur-sm sticky top-0 z-50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
-                            <span className="text-xl font-bold tracking-tight">CodePods</span>
+                            <span className="text-xl font-bold tracking-tight">CodePodAI</span>
                         </div>
                         <div className="flex gap-6 text-sm font-medium text-text-secondary">
                             <span onClick={() => navigate('/dashboard')} className="cursor-pointer hover:text-text-primary">Dashboard</span>
@@ -160,7 +160,7 @@ const UserProfile = ({ embed = false }: UserProfileProps) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <HiOutlineGlobeAlt className="w-4 h-4" />
-                                    {user.website || 'codepods.io'}
+                                    {user.website || 'codepodai.io'}
                                 </div>
                             </div>
                         </div>

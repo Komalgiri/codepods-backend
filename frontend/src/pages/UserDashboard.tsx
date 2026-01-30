@@ -116,7 +116,7 @@ const UserDashboard = () => {
                                 <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </div>
-                        <span className="text-xl font-bold tracking-tight">CodePods</span>
+                        <span className="text-xl font-bold tracking-tight">CodePodAI</span>
                     </div>
 
                     <div className="flex items-center gap-6">

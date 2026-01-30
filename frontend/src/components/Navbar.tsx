@@ -21,7 +21,7 @@ const Navbar = () => {
             <HiOutlineCubeTransparent className="w-8 h-8 text-primary" />
           </div>
           <span className="text-2xl font-black tracking-tighter text-white">
-            CodePods
+            CodePodAI
           </span>
         </div>
 

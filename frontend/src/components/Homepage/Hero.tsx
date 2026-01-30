@@ -70,7 +70,7 @@ const Hero = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            CodePods v1.0 is now live
+            codepodai v1.0 is now live
           </motion.div>
 
           {/* Headline */}
@@ -268,7 +268,7 @@ const Hero = () => {
               <div className="h-20 bg-black/60 px-10 rounded-[2.5rem] border border-white/5 flex items-center gap-6 font-mono text-[10px] shadow-2xl">
                 <HiCommandLine className="text-primary w-5 h-5 animate-pulse" />
                 <div className="flex-grow text-white/40 overflow-hidden whitespace-nowrap">
-                  <span className="text-primary tracking-widest">~/pod-93/build</span> <span className="text-white/60 italic">codepods --predictive-plan --region=us-east</span>
+                  <span className="text-primary tracking-widest">~/pod-93/build</span> <span className="text-white/60 italic">codepodai --predictive-plan --region=us-east</span>
                 </div>
                 <div className="flex gap-3">
                   <div className="w-1.5 h-4 bg-primary/40 animate-blink" />

@@ -698,7 +698,7 @@ const PodOverview = () => {
             <nav className="border-b border-background-border/50 bg-background/50 backdrop-blur-sm sticky top-0 z-50 h-16 shrink-0">
                 <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
-                        <span className="text-xl font-bold tracking-tight">CodePods</span>
+                        <span className="text-xl font-bold tracking-tight">CodePodAI</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="bg-background-surface/50 px-3 py-1.5 rounded-lg border border-background-border flex items-center gap-2 w-64">

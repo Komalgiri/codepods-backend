@@ -81,7 +81,7 @@ const CreatePod = () => {
             <nav className="border-b border-background-border/50 bg-background/50 backdrop-blur-sm sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
-                        <span className="text-xl font-bold tracking-tight">CodePods</span>
+                        <span className="text-xl font-bold tracking-tight">CodePodAI</span>
                     </div>
                 </div>
             </nav>
@@ -115,7 +115,7 @@ const CreatePod = () => {
                                     className="w-full bg-background/50 border border-background-border rounded-lg px-4 py-3 text-text-primary placeholder:text-text-secondary/50 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all font-mono text-sm"
                                 />
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-text-secondary pointer-events-none">
-                                    codepods.io/pods/...
+                                    codepodai.io/pods/...
                                 </div>
                             </div>
                             <p className="text-xs text-text-secondary">Unique identifier for your project workspace.</p>
