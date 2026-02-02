@@ -723,7 +723,7 @@ export const syncRepoActivity = async (podId, owner, repoName) => {
     // We can use any member's token or a generic one if configured.
     // For now, we'll try to find an admin with a token.
     const adminWithToken = pod.members.find(m => m.role === 'admin' && m.user.githubToken);
-    const accessToken = adminWithToken?.user.githubToken;
+    let accessToken = adminWithToken?.user.githubToken;
 
     if (!accessToken) {
       // Falling back to public API if possible, or failing
