@@ -78,6 +78,20 @@ export const createTask = async (req, res) => {
       },
     });
 
+    // Notify assigned user about new task
+    if (assignedTo && assignedTo !== userId) {
+      await prisma.notification.create({
+        data: {
+          userId: assignedTo,
+          title: "New Task Assigned",
+          message: `You have been assigned a new task: "${title}" in ${pod.name}`,
+          type: "info",
+          link: `/pod/${podId}`,
+          read: false
+        }
+      });
+    }
+
     return res.status(201).json({
       message: "Task created successfully 🚀.",
       task,
@@ -215,6 +229,28 @@ export const updateTaskStatus = async (req, res) => {
           roadmapUpdatedAt: null
         }
       });
+
+      // Notify pod admins about task completion
+      const podAdmins = await prisma.podMember.findMany({
+        where: {
+          podId: task.podId,
+          role: 'admin',
+          userId: { not: userId }
+        }
+      });
+
+      if (podAdmins.length > 0) {
+        const completionNotifications = podAdmins.map(admin => ({
+          userId: admin.userId,
+          title: "Task Completed",
+          message: `${updatedTask.user?.name || 'A team member'} completed: "${updatedTask.title}"`,
+          type: "success",
+          link: `/pod/${task.podId}`,
+          read: false
+        }));
+
+        await prisma.notification.createMany({ data: completionNotifications });
+      }
     }
 
     return res.status(200).json({

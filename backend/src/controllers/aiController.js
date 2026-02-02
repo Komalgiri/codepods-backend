@@ -328,6 +328,23 @@ export const getPodRoadmap = async (req, res) => {
         });
 
         console.log(`[AI] Roadmap successfully generated and saved for pod ${podId}.`);
+
+        // Notify all pod members about new roadmap
+        const notifications = pod.members
+            .filter(m => m.userId !== userId) // Don't notify the admin who generated it
+            .map(member => ({
+                userId: member.userId,
+                title: "New AI Roadmap Generated",
+                message: `A new strategic roadmap has been generated for ${pod.name}. Check it out!`,
+                type: "success",
+                link: `/pod/${podId}`,
+                read: false
+            }));
+
+        if (notifications.length > 0) {
+            await prisma.notification.createMany({ data: notifications });
+        }
+
         return res.status(200).json({ ...result, members: teamAllocation });
 
     } catch (error) {

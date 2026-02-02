@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
 import { authService } from '../services/authService';
 import { podService } from '../services/podService';
+import NotificationDropdown from '../components/NotificationDropdown';
+import ExplorePodsModal from '../components/ExplorePodsModal';
 
 interface User {
     id: string;
@@ -51,6 +53,8 @@ const UserDashboard = () => {
         { id: '2', title: 'Design Dashboard', status: 'pending', dueDate: 'Tomorrow' },
         { id: '3', title: 'Setup Database', status: 'done', dueDate: 'Yesterday' },
     ]);
+
+    const [isExploreModalOpen, setIsExploreModalOpen] = useState(false);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -120,6 +124,7 @@ const UserDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-6">
+                        <NotificationDropdown />
                         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/profile')}>
                             <div className="flex flex-col items-end">
                                 <span className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">{user.name}</span>
@@ -191,6 +196,17 @@ const UserDashboard = () => {
                                             <line x1="5" y1="12" x2="19" y2="12"></line>
                                         </svg>
                                         Create Pod
+                                    </button>
+                                    <button
+                                        onClick={() => setIsExploreModalOpen(true)}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-background-border/50 hover:bg-background-border text-text-secondary hover:text-text-primary text-xs font-bold rounded-lg transition-all"
+                                        title="Explore Pods"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                                        </svg>
+                                        Explore
                                     </button>
                                 </div>
 
@@ -353,6 +369,9 @@ const UserDashboard = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Explore Pods Modal */}
+            <ExplorePodsModal isOpen={isExploreModalOpen} onClose={() => setIsExploreModalOpen(false)} />
         </div>
     );
 };

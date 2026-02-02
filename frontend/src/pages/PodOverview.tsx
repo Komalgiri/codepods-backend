@@ -4,6 +4,7 @@ import PodTaskBoard from './PodTaskBoard';
 import AIPlanningAssistant from './AIPlanningAssistant';
 import GitHubActivity from './GitHubActivity';
 import PodRewards from './PodRewards';
+import NotificationDropdown from '../components/NotificationDropdown';
 import { podService, type Pod, type PodStats } from '../services/podService';
 import { HiChartBar, HiPlus, HiLightningBolt, HiOutlineHome, HiOutlineMap, HiOutlineClipboardList, HiOutlineGift, HiLockClosed } from 'react-icons/hi';
 import { FaFire, FaUserShield, FaCrown, FaTools, FaGithub } from 'react-icons/fa';
@@ -701,6 +702,7 @@ const PodOverview = () => {
                         <span className="text-xl font-bold tracking-tight">CodePodAI</span>
                     </div>
                     <div className="flex items-center gap-4">
+                        <NotificationDropdown />
                         <div className="bg-background-surface/50 px-3 py-1.5 rounded-lg border border-background-border flex items-center gap-2 w-64">
                             <svg className="w-4 h-4 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <input type="text" placeholder="Search pods..." className="bg-transparent border-none outline-none text-sm w-full text-text-primary placeholder:text-text-secondary" />

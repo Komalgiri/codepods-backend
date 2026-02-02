@@ -10,6 +10,7 @@ import rewardRoutes from "./routes/rewardRoutes.js";
 import githubAuth from "./routes/githubAuth.js";
 import githubRoutes from "./routes/githubRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import compression from "compression";
 
@@ -67,6 +68,7 @@ app.use("/api/rewards", rewardRoutes);
 app.use("/api/auth/github", githubAuth);
 app.use("/api/github", githubRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check route
 app.get("/", (req, res) => {

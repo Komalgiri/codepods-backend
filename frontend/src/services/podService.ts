@@ -239,5 +239,19 @@ export const podService = {
             body: { status },
             token: localStorage.getItem('token'),
         });
+    },
+
+    getAllPods: async (): Promise<{ pods: (Pod & { memberCount: number; userStatus: string | null })[] }> => {
+        return apiRequest<{ pods: (Pod & { memberCount: number; userStatus: string | null })[] }>('pods/public', {
+            method: 'GET',
+            token: localStorage.getItem('token'),
+        });
+    },
+
+    requestToJoin: async (podId: string): Promise<{ message: string; member: PodMember }> => {
+        return apiRequest<{ message: string; member: PodMember }>(`pods/${podId}/request`, {
+            method: 'POST',
+            token: localStorage.getItem('token'),
+        });
     }
 };

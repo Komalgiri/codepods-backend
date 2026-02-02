@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { HiOutlineCubeTransparent } from 'react-icons/hi2';
 import { motion } from 'framer-motion';
+import NotificationDropdown from './NotificationDropdown';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ const Navbar = () => {
 
         {/* Auth Actions */}
         <div className="flex items-center gap-4">
+          <NotificationDropdown />
           <Link
             to="/auth"
             className="hidden sm:block text-xs font-black text-muted hover:text-primary px-4 py-2 transition-colors uppercase tracking-widest"

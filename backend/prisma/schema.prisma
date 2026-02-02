@@ -30,6 +30,7 @@ model User {
   rewards          Reward[]
   tasks            Task[]
   skills           Skill[]     @relation("UserSkills")
+  notifications    Notification[]
 }
 
 /// ///////////////////////
@@ -120,4 +121,16 @@ model Skill {
   id    String @id @default(cuid())
   name  String @unique
   users User[] @relation("UserSkills")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("info")
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 }

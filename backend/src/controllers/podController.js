@@ -260,12 +260,120 @@ export const addMember = async (req, res) => {
 
     // We do NOT invalidate roadmap yet, only when they accept.
 
+    // Notify the user
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: "Pod Invitation",
+        message: `You have been invited to join ${pod.name} as a ${role || "member"}.`,
+        type: "invite",
+        link: `/pods/${podId}`,
+        read: false
+      }
+    });
+
     return res.status(201).json({
       message: "Invitation sent successfully 🚀.",
       member: podMember,
     });
   } catch (error) {
     console.error("Error adding member:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// GET /pods/public - Get all public pods (for exploration)
+export const getAllPods = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const pods = await prisma.pod.findMany({
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { members: true }
+        },
+        members: {
+          where: { userId },
+          select: { status: true }
+        }
+      }
+    });
+
+    const formattedPods = pods.map(pod => ({
+      id: pod.id,
+      name: pod.name,
+      description: pod.description,
+      repoOwner: pod.repoOwner,
+      repoName: pod.repoName,
+      memberCount: pod._count.members,
+      userStatus: pod.members[0]?.status || null // 'accepted', 'pending', 'requested', or null
+    }));
+
+    res.json({ pods: formattedPods });
+  } catch (error) {
+    console.error("Error fetching all pods:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// POST /pods/:id/request - Request to join a pod
+export const requestToJoin = async (req, res) => {
+  try {
+    const { id: podId } = req.params;
+    const userId = req.user.id;
+
+    // Check if pod exists
+    const pod = await prisma.pod.findUnique({
+      where: { id: podId },
+      include: {
+        members: {
+          where: { role: 'admin' }
+        }
+      }
+    });
+
+    if (!pod) return res.status(404).json({ error: "Pod not found" });
+
+    // Check if already a member/pending
+    const existingMember = await prisma.podMember.findUnique({
+      where: { userId_podId: { userId, podId } }
+    });
+
+    if (existingMember) {
+      return res.status(400).json({
+        error: existingMember.status === 'requested' ? "Request already pending" : "Already a member"
+      });
+    }
+
+    // Create request
+    const member = await prisma.podMember.create({
+      data: {
+        userId,
+        podId,
+        role: 'member',
+        status: 'requested'
+      }
+    });
+
+    // Notify all admins
+    const notifications = pod.members.map(admin => ({
+      userId: admin.userId,
+      title: "Join Request",
+      message: "A user has requested to join your pod.",
+      type: "request",
+      link: `/pods/${podId}/members`,
+      read: false
+    }));
+
+    if (notifications.length > 0) {
+      await prisma.notification.createMany({ data: notifications });
+    }
+
+    res.json({ message: "Request sent successfully", member });
+  } catch (error) {
+    console.error("Error requesting join:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -604,6 +712,28 @@ export const respondToInvite = async (req, res) => {
         roadmapUpdatedAt: null
       }
     });
+
+    // Notify pod admins about new member
+    const podAdmins = await prisma.podMember.findMany({
+      where: {
+        podId,
+        role: 'admin',
+        userId: { not: userId }
+      }
+    });
+
+    if (podAdmins.length > 0) {
+      const joinNotifications = podAdmins.map(admin => ({
+        userId: admin.userId,
+        title: "New Member Joined",
+        message: `A new member has joined ${pod.name}!`,
+        type: "success",
+        link: `/pod/${podId}/members`,
+        read: false
+      }));
+
+      await prisma.notification.createMany({ data: joinNotifications });
+    }
 
     res.json({ message: "Welcome to the pod! 🚀", member: updatedMember });
 
