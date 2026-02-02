@@ -1,141 +1,121 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // Supabase connection string
+  url      = env("DATABASE_URL")
 }
 
-//////////////////////////
-// User & Auth
-//////////////////////////
+/// ///////////////////////
+/// ///////////////////////
 model User {
-  id           String       @id @default(cuid())
-  email        String?      @unique        // optional for GitHub users
-  password     String?                      // optional for GitHub users
-  name         String?
-  role         String       @default("user")
-  pods         PodMember[]
-  tasks        Task[]
-  rewards      Reward[]
-  activities   Activity[]
-  skills       Skill[]      @relation("UserSkills")
-  createdAt    DateTime     @default(now())
-
-  // GitHub OAuth fields
-  githubId       String?      @unique
-  githubUsername String?      @unique
-  githubToken    String?      // we'll encrypt this
-  githubTokenValid Boolean    @default(true)
-  
-  // Profile Analysis
-  techStack      String[]     @default([])
-  inferredRole   String?
-  roleAnalysis   Json?        // Story/reasoning behind the role
-  
-  // Team Dynamics & Reliability
-  reliabilityScore Float      @default(100.0) // 0-100 scale
-  dynamicsMetrics  Json?       // { onTimeRate, rescueCount, missedDeadlines }
+  id               String      @id @default(cuid())
+  email            String?     @unique
+  name             String?
+  createdAt        DateTime    @default(now())
+  password         String?
+  githubId         String?     @unique
+  githubToken      String?
+  role             String      @default("user")
+  githubUsername   String?     @unique
+  inferredRole     String?
+  techStack        String[]    @default([])
+  githubTokenValid Boolean     @default(true)
+  roleAnalysis     Json?
+  reliabilityScore Float       @default(100.0)
+  dynamicsMetrics  Json?
+  activities       Activity[]
+  pods             PodMember[]
+  rewards          Reward[]
+  tasks            Task[]
+  skills           Skill[]     @relation("UserSkills")
 }
 
-//////////////////////////
-// Pods & Collaboration
-//////////////////////////
+/// ///////////////////////
+/// ///////////////////////
 model Pod {
-  id          String       @id @default(cuid())
-  name        String
-  description String?
-  repoOwner   String?      // GitHub org or username
-  repoName    String?      // GitHub repo name
-  members     PodMember[]  // relation to User via join table
-  tasks       Task[]       // tasks inside pod
-  activities  Activity[]
-  createdAt        DateTime     @default(now())
-  aiRoadmap        Json?        // Cached AI roadmap data
-  projectBrain     Json?        // THE BRAIN: Strategic memory, decisions, and long-term context
-  roadmapUpdatedAt DateTime?    // When the roadmap was last generated
+  id               String      @id @default(cuid())
+  name             String
+  description      String?
+  createdAt        DateTime    @default(now())
+  repoName         String?
+  repoOwner        String?
+  aiRoadmap        Json?
+  roadmapUpdatedAt DateTime?
+  projectBrain     Json?
+  activities       Activity[]
+  members          PodMember[]
+  tasks            Task[]
 }
 
 model PodMember {
-  id       String @id @default(cuid())
-  userId   String
-  podId    String
-  role     String   // "admin" / "member" / "maintainer"
-  status   String   @default("accepted") // "pending", "accepted", "rejected"
+  id     String @id @default(cuid())
+  userId String
+  podId  String
+  role   String
+  status String @default("accepted")
+  pod    Pod    @relation(fields: [podId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
-  user User @relation(fields: [userId], references: [id])
-  pod  Pod  @relation(fields: [podId], references: [id])
-
-  @@unique([userId, podId]) // prevent duplicate membership
+  @@unique([userId, podId])
 }
 
-//////////////////////////
-// Tasks
-//////////////////////////
+/// ///////////////////////
+/// ///////////////////////
 model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  status      String   @default("pending") // pending, in-progress, done
-  podId       String
-  assignedTo  String?
-
-  pod   Pod   @relation(fields: [podId], references: [id])
-  user  User? @relation(fields: [assignedTo], references: [id])
-
-  createdAt DateTime @default(now())
-  dueAt     DateTime?
-  completedAt DateTime?
-  originalAssigneeId String? // To track if someone "rescued" the task
+  id                 String    @id @default(cuid())
+  title              String
+  status             String    @default("pending")
+  podId              String
+  assignedTo         String?
+  createdAt          DateTime  @default(now())
+  dueAt              DateTime?
+  description        String?
+  completedAt        DateTime?
+  originalAssigneeId String?
+  user               User?     @relation(fields: [assignedTo], references: [id])
+  pod                Pod       @relation(fields: [podId], references: [id])
 }
 
-//////////////////////////
-// Activity & Rewards
-//////////////////////////
+/// ///////////////////////
+/// ///////////////////////
 model Activity {
   id        String   @id @default(cuid())
-  type      String   // "commit", "pr_opened", "repo_created", etc.
-  meta      Json?    // raw payload or parsed details
-  value     Int      @default(0)  // points for this activity
+  type      String
+  meta      Json?
+  value     Int      @default(0)
   userId    String
   podId     String?
-  sourceId  String?  // Unique ID from the source (e.g., commit SHA, PR ID) to prevent duplicates at DB level
-
-  user      User     @relation(fields: [userId], references: [id])
-  pod       Pod?     @relation(fields: [podId], references: [id])
   createdAt DateTime @default(now())
+  pod       Pod?     @relation(fields: [podId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  sourceId  String?   // add this
 
-  @@unique([userId, type, sourceId])
-  @@index([podId, createdAt])
-  @@index([userId, type])
+
 }
 
 model Reward {
   id        String   @id @default(cuid())
   points    Int      @default(0)
-  badges    String[] // list of badge slugs
   reason    String?
   userId    String
-
-  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+  badges    String[]
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Badge {
-  id          String @id @default(cuid())
-  slug        String @unique
+  id          String  @id @default(cuid())
+  slug        String  @unique
   title       String
   description String
-  icon        String? // URL or asset name
+  icon        String?
   points      Int
 }
 
-//////////////////////////
-// Skills (optional for Skill Exchange)
-//////////////////////////
+/// ///////////////////////
+/// ///////////////////////
 model Skill {
   id    String @id @default(cuid())
   name  String @unique
